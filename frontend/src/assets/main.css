@@ -1,0 +1,26 @@
+/* 替换后的内容 */
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100vh;
+  overflow-x: hidden; /* 防止出现横向滚动条 */
+}
+
+#app {
+  /* 关键：取消最大宽度限制，设为 100% */
+  max-width: 100%;
+  width: 100%; 
+  margin: 0;
+  padding: 0;
+  display: block; /* 取消 grid 布局 */
+}
+
+/* 移除那些干扰链接颜色的样式，让组件自己控制 */
