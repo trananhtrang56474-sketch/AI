@@ -1,68 +1,52 @@
-import requests
-from flask import Flask, request, jsonify
+import sys
+from flask import Flask
 from flask_cors import CORS
+from extensions import db
+from config import Config
 
-app = Flask(__name__)
-CORS(app)
+# 1. 尝试导入路由，如果 routes.py 写错，这里会直接报错提示
+try:
+    from routes import api_bp
+except ImportError as e:
+    print(f"❌ 启动失败：routes.py 文件有问题。\n详细错误: {e}")
+    sys.exit(1)
 
-API_KEY = "sk-56307adfa2e44424a95148cab9830edc"
-API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+def create_app():
+    app = Flask(__name__)
+    
+    # 加载配置
+    app.config.from_object(Config)
+    
+    # 初始化插件
+    CORS(app)
+    db.init_app(app)
 
-# 用于存储每个会话的上下文，key 为 session_id
-chat_sessions = {}
-
-@app.route("/api/chat", methods=["POST"])
-def chat_handler():
-    data = request.json
-    user_message = data.get("message")
-    session_id = data.get("session_id", "default")  # 默认会话
-
-    if not user_message:
-        return jsonify({"error": "Message 字段是必须的。"}), 400
-
-    # 获取当前会话的消息列表，如果不存在则创建
-    if session_id not in chat_sessions:
-        chat_sessions[session_id] = []
-
-    # 将用户消息加入会话上下文
-    chat_sessions[session_id].append({"role": "user", "content": user_message})
-
-    # 构建 payload，发送整个会话上下文给 API
-    payload = {
-        "model": "qwen-plus",  # 或者你账号可用的模型
-        "messages": chat_sessions[session_id],
-        "max_tokens": 1000,
-        "temperature": 0.7
-    }
-
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    try:
-        response = requests.post(API_URL, json=payload, headers=headers)
-        response.raise_for_status()
-        response_data = response.json()
-
-        # 解析 AI 回复
-        ai_reply = ""
-        if "choices" in response_data:
-            ai_reply = response_data["choices"][0].get("message", {}).get("content", "")
-        elif "result" in response_data:
-            ai_reply = response_data["result"]
-
-        if not ai_reply:
-            ai_reply = "[AI 未返回内容，请检查模型或 Key 是否可用]"
-
-        # 将 AI 回复加入上下文
-        chat_sessions[session_id].append({"role": "assistant", "content": ai_reply})
-
-        return jsonify({"reply": ai_reply})
-
-    except requests.exceptions.RequestException as e:
-        print(f"调用通义千问 API 时发生错误: {e}")
-        return jsonify({"error": "调用 AI API 失败"}), 500
+    # 2. 尝试连接数据库
+    with app.app_context():
+        try:
+            # 必须导入模型，SQLAlchemy 才能识别表结构
+            import models 
+            
+            # 尝试建表（这一步最容易报错）
+            db.create_all()
+            print("✅ 数据库连接成功，表结构已就绪。")
+            
+        except Exception as e:
+            print("\n" + "="*50)
+            print("❌ 严重错误：数据库连接失败！")
+            print("请检查 backend/config.py 里的密码是否正确。")
+            print("请检查 MySQL 是否已启动，且存在 'mental_health_bot' 数据库。")
+            print(f"详细报错信息: {e}")
+            print("="*50 + "\n")
+            # 不退出程序，防止窗口闪退，方便你看报错
+    
+    # 注册路由
+    app.register_blueprint(api_bp)
+    
+    return app
 
 if __name__ == "__main__":
+    app = create_app()
+    # 打印一条提示，证明程序正在跑
+    print("🚀 服务正在启动，监听端口 8080...")
     app.run(host="127.0.0.1", port=8080, debug=True)

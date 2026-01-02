@@ -36,7 +36,7 @@ def start_frontend():
     
     # 启动 npm run dev
     # 因为你在 package.json 里加了 --open，它会自动打开浏览器
-    return subprocess.Popen([npm_cmd, 'run', 'dev'], cwd=FRONTEND_DIR)
+    return subprocess.Popen([npm_cmd, 'run', 'dev', '--', '--open'], cwd=FRONTEND_DIR, shell=True)
 
 if __name__ == '__main__':
     backend_process = None

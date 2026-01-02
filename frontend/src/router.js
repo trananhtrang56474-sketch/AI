@@ -1,16 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router';
-// 导入布局
+
+// 1. 导入页面组件
 import MainLayout from './layouts/MainLayout.vue';
-// 导入页面
-import Home from './pages/Home.vue';
+import LandingPage from './pages/LandingPage.vue'; // 确保你之前没删这个文件
+import LoginPage from './pages/LoginPage.vue';
 import ChatPage from './pages/ChatPage.vue';
-// 1. 导入新的着陆页组件
-import LandingPage from './pages/LandingPage.vue'; 
+import Home from './pages/Home.vue';
+
+// 2. 定义路由守卫 (检查是否登录)
+const requireAuth = (to, from, next) => {
+  const userId = localStorage.getItem('user_id');
+  if (!userId) {
+    // 没登录 -> 踢去登录页
+    next('/login');
+  } else {
+    // 登录了 -> 放行
+    next();
+  }
+};
 
 const routes = [
   // ---------------------------------------------------------
-  // 路由 1: 首页 (着陆页)
-  // 访问 http://localhost:5173/ 时显示这个，没有侧边栏
+  // 1. 落地页 (第一入口，公开)
+  // 访问域名根目录时，显示这个漂亮的介绍页
   // ---------------------------------------------------------
   {
     path: '/',
@@ -19,15 +31,23 @@ const routes = [
   },
 
   // ---------------------------------------------------------
-  // 路由 2: 应用主区域 (带 Sidebar 的三栏布局)
-  // 访问 /home 或 /chat 时匹配这里
+  // 2. 登录/注册页 (公开)
   // ---------------------------------------------------------
   {
-    // 这里 path 依然写 '/'，但在 Vue Router 中，如果上面那个匹配了精确的 '/'，
-    // 这里就会主要负责匹配 children (子路由)
+    path: '/login',
+    name: 'Login',
+    component: LoginPage
+  },
+
+  // ---------------------------------------------------------
+  // 3. 核心功能区 (受保护，需要登录)
+  // 这里利用了 Vue Router 的匹配机制：
+  // 只有访问 /home 或 /chat 时才会匹配到这里
+  // ---------------------------------------------------------
+  {
     path: '/', 
     component: MainLayout,
-    // 注意：我删掉了 redirect: '/home'，因为现在根路径要显示 LandingPage
+    beforeEnter: requireAuth, // 🔥 门神：没登录不准进这里面的子路由
     children: [
       {
         path: 'home', // 对应 URL: /home
@@ -38,12 +58,6 @@ const routes = [
         path: 'chat', // 对应 URL: /chat
         name: 'Chat',
         component: ChatPage
-      },
-      {
-        path: 'chat/:id', // 对应 URL: /chat/123
-        name: 'ChatWithId',
-        component: ChatPage,
-        props: true
       }
     ]
   }
@@ -52,13 +66,8 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  //哪怕页面切换了，为了体验好，我们可以让滚动条自动滚回顶部
   scrollBehavior(to, from, savedPosition) {
-    if (savedPosition) {
-      return savedPosition;
-    } else {
-      return { top: 0 };
-    }
+    return savedPosition || { top: 0 };
   },
 });
 

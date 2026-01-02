@@ -14,31 +14,20 @@
         </div>
         
         <div class="menu">
-          <a 
-            href="#vision" 
-            :class="{ active: activeSection === 'vision' }"
-            @click.prevent="scrollTo('#vision')"
-          >
-            愿景
-          </a>
-          <a 
-            href="#features" 
-            :class="{ active: activeSection === 'features' }"
-            @click.prevent="scrollTo('#features')"
-          >
-            功能
-          </a>
-          <a 
-            href="#process" 
-            :class="{ active: activeSection === 'process' }"
-            @click.prevent="scrollTo('#process')"
-          >
-            流程
-          </a>
+          <a href="#vision" @click.prevent="scrollTo('#vision')">愿景</a>
+          <a href="#features" @click.prevent="scrollTo('#features')">功能</a>
+          
+          <div v-if="isLoggedIn" class="user-menu">
+            <span class="greeting">Hi, {{ username }}</span>
+            <a href="#" @click.prevent="handleLogout" class="logout-link">退出</a>
+          </div>
+          <div v-else>
+            <router-link to="/login" class="nav-item">登录</router-link>
+          </div>
         </div>
 
-        <button class="enter-btn" @click="goToApp">
-          进入控制台
+        <button class="enter-btn" @click="handleMainAction">
+          {{ isLoggedIn ? '进入控制台' : '注册账号' }}
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -59,7 +48,9 @@
             在这个喧嚣的数字世界，为你留一处私密、安全的心灵栖息地。
           </p>
           <div class="hero-actions">
-            <button class="primary-btn big" @click="goToApp">立即体验</button>
+            <button class="primary-btn big" @click="handleMainAction">
+              {{ isLoggedIn ? '继续咨询' : '立即体验' }}
+            </button>
             <button class="text-btn" @click="scrollTo('#vision')">了解更多 ↓</button>
           </div>
         </div>
@@ -189,8 +180,8 @@
 
         <div class="final-cta reveal-item delay-200">
           <h2>准备好开始了吗？</h2>
-          <button class="primary-btn huge" @click="goToApp">
-            进入 AI 心理顾问控制台
+          <button class="primary-btn huge" @click="handleMainAction">
+            {{ isLoggedIn ? '进入 AI 心理顾问控制台' : '注册账号开启体验' }}
           </button>
           <p class="copyright">© 2025 AI Counselor Project. Graduation Design.</p>
         </div>
@@ -205,10 +196,48 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const isScrolled = ref(false);
-const activeSection = ref(''); // 记录当前在哪个板块
+const activeSection = ref(''); 
 
-const goToApp = () => {
-  router.push('/home');
+// 🔥 新增状态：是否登录
+const isLoggedIn = ref(false);
+const username = ref('');
+
+// 1. 初始化检查状态
+const checkLoginStatus = () => {
+  const userId = localStorage.getItem('user_id');
+  const storedName = localStorage.getItem('username');
+  
+  if (userId) {
+    isLoggedIn.value = true;
+    username.value = storedName || 'User';
+  } else {
+    isLoggedIn.value = false;
+    username.value = '';
+  }
+};
+
+// 2. 智能跳转逻辑 (整合了原来的 goToApp)
+const handleMainAction = () => {
+  if (isLoggedIn.value) {
+    // 已登录 -> 进主页
+    router.push('/home');
+  } else {
+    // 🔥 关键修改：未登录 -> 去注册 (带上参数 mode=register)
+    router.push('/login?mode=register');
+  }
+};
+
+// 3. 退出登录逻辑
+const handleLogout = () => {
+  // 清除缓存
+  localStorage.removeItem('user_id');
+  localStorage.removeItem('username');
+  
+  // 更新状态
+  isLoggedIn.value = false;
+  username.value = '';
+  
+  alert('已安全退出登录');
 };
 
 const scrollTo = (selector) => {
@@ -218,7 +247,7 @@ const scrollTo = (selector) => {
   }
 };
 
-// --- 滚动显现动画 (Reveal Animation) ---
+// --- 滚动显现动画 ---
 const setupRevealObserver = () => {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -231,21 +260,18 @@ const setupRevealObserver = () => {
   document.querySelectorAll('.reveal-item').forEach(el => observer.observe(el));
 };
 
-// --- 滚动监听高亮 (Scroll Spy) ---
+// --- 滚动监听高亮 ---
 const setupScrollSpy = () => {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      // 当板块交叉进入视口中心线时，更新 activeSection
       if (entry.isIntersecting) {
         activeSection.value = entry.target.id;
       }
     });
   }, {
-    // 关键参数：把视口缩小到中间一条线，实现精准判断
     rootMargin: "-50% 0px -50% 0px"
   });
 
-  // 监听所有带 id 的 section
   document.querySelectorAll('section[id]').forEach(section => {
     observer.observe(section);
   });
@@ -256,6 +282,7 @@ const handleScroll = () => {
 };
 
 onMounted(() => {
+  checkLoginStatus(); // 页面加载时检查登录状态
   window.addEventListener('scroll', handleScroll);
   setupRevealObserver();
   setupScrollSpy();
@@ -277,7 +304,6 @@ onUnmounted(() => {
   color: #1e293b;
   overflow-x: hidden;
   position: relative;
-  /* 确保全屏宽度 */
   width: 100vw;
   min-height: 100vh;
 }
@@ -322,7 +348,7 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
-/* --- 导航栏 (包含高亮逻辑) --- */
+/* --- 导航栏 --- */
 .navbar {
   position: fixed; top: 0; left: 0; width: 100%; height: 90px;
   z-index: 1000; transition: all 0.4s ease;
@@ -342,7 +368,7 @@ onUnmounted(() => {
 .brand-logo { font-size: 24px; }
 
 /* 菜单样式 */
-.menu { display: flex; gap: 40px; }
+.menu { display: flex; gap: 40px; align-items: center; }
 .menu a { 
   text-decoration: none; 
   color: #64748b; 
@@ -352,31 +378,19 @@ onUnmounted(() => {
   position: relative;
   padding: 5px 0;
 }
-
-/* 激活或悬停状态 */
-.menu a:hover,
-.menu a.active { 
-  color: #1890ff; 
-  font-weight: 600;
-}
-
-/* 下划线动画 */
+.menu a:hover, .menu a.active { color: #1890ff; font-weight: 600; }
 .menu a::after { 
-  content: ''; 
-  position: absolute; 
-  bottom: 0; 
-  left: 0; 
-  width: 0; 
-  height: 2px; 
-  background: #1890ff; 
-  transition: width 0.3s ease; 
-  border-radius: 2px;
+  content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; 
+  background: #1890ff; transition: width 0.3s ease; border-radius: 2px;
 }
-/* 激活时展开下划线 */
-.menu a:hover::after,
-.menu a.active::after { 
-  width: 100%; 
-}
+.menu a:hover::after, .menu a.active::after { width: 100%; }
+
+/* 用户菜单样式 (新增) */
+.user-menu { display: flex; gap: 20px; align-items: center; }
+.greeting { color: #0f172a; font-weight: 600; font-size: 14px; }
+.logout-link { color: #ef4444 !important; } /* 红色表示退出 */
+.logout-link:hover { opacity: 0.8; }
+.logout-link::after { background: #ef4444 !important; }
 
 .enter-btn {
   background: #0f172a; color: #fff; border: none; padding: 10px 20px; border-radius: 50px;
