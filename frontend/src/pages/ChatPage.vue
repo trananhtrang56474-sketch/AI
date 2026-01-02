@@ -1,11 +1,10 @@
 <template>
-  <div class="chat-page-container">
+  <div class="chat-pure-container">
     <header class="chat-header">
       <div class="header-info">
-        <h3>AI 心理顾问</h3>
+        <h3>{{ headerTitle }}</h3>
         <span class="status-badge">在线</span>
       </div>
-      <button class="logout-btn" @click="handleLogout">退出</button>
     </header>
 
     <ChatWindow 
@@ -21,158 +20,113 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, watch, computed, nextTick } from 'vue';
 import axios from 'axios';
-import { useRouter } from 'vue-router'; // 1. 引入路由控制
+import { useRoute, useRouter } from 'vue-router';
+import { bus } from '../eventBus'; // 引入通信工具
+// 复用你已经写好的组件
 import ChatWindow from '@/components/ChatWindow.vue';
 import MessageInput from '@/components/MessageInput.vue';
 
-const router = useRouter(); // 初始化路由
+const route = useRoute();
+const router = useRouter();
+
+const conversation = ref([]);
 const isLoading = ref(false);
 const isTyping = ref(false);
-const conversation = ref([]);
-const chatWindowRef = ref(null); // 用于控制滚动
+const chatWindowRef = ref(null);
 
-// 2. 核心：页面加载时执行
-onMounted(async () => {
-  // A. 检查是否登录
-  const userId = localStorage.getItem('user_id');
-  if (!userId) {
-    alert("请先登录！");
-    router.push('/login'); // 没登录就踢走
-    return;
+// 计算标题
+const headerTitle = computed(() => route.query.session_id ? '正在对话' : '新对话');
+
+// 🔥 核心逻辑：监听路由参数变化
+// 只要左边 Sidebar 改变了 URL，这里就会自动执行
+watch(() => route.query.session_id, async (newId) => {
+  if (newId) {
+    // 如果 URL 里有 session_id，加载历史记录
+    await loadHistory(newId);
+  } else {
+    // 如果没有 ID，说明是新对话，清空屏幕
+    conversation.value = [];
   }
+}, { immediate: true });
 
-  // B. 加载历史记录
+// 加载历史记录函数
+const loadHistory = async (sessionId) => {
   try {
-    const res = await axios.get(`http://127.0.0.1:8080/api/history?user_id=${userId}`);
-    // 后端返回的数据格式已经是 [{sender: 'user', content: '...'}, ...]
-    // 直接赋值即可
+    const res = await axios.get(`http://127.0.0.1:8080/api/history?session_id=${sessionId}`);
     conversation.value = res.data;
-    scrollToBottom();
-  } catch (e) {
-    console.error("加载历史记录失败", e);
-  }
-});
+    // 强制滚动到底部
+    nextTick(() => {
+      // 假设 ChatWindow 组件暴露了滚动逻辑，或者我们直接操作 DOM
+      // 如果 ChatWindow 内部有 watch messages 自动滚动，这里其实可以省略
+    });
+  } catch (e) { console.error(e); }
+};
 
-// 发送消息逻辑
+// 发送消息函数
 const handleSendMessage = async (text) => {
-  const userId = localStorage.getItem('user_id'); // 获取当前用户ID
-  
-  // 1. 立即显示用户消息
-  conversation.value.push({ sender: 'user', content: text });
-  scrollToBottom();
+  const userId = localStorage.getItem('user_id');
+  const sessionId = route.query.session_id; // 从 URL 获取当前会话 ID
 
-  // 2. 准备 AI 占位消息
+  // 1. 上屏
+  conversation.value.push({ sender: 'user', content: text });
+  
+  // 2. 占位
   isLoading.value = true;
-  conversation.value.push({
-    sender: 'ai',
-    content: '',
-    isLoading: true
-  });
-  scrollToBottom();
+  conversation.value.push({ sender: 'ai', content: '', isLoading: true });
 
   try {
-    // 3. 发送给后端 (带上 user_id)
-    const response = await axios.post('http://127.0.0.1:8080/api/chat', { 
+    // 3. 发送请求
+    const res = await axios.post('http://127.0.0.1:8080/api/chat', {
+      user_id: userId,
       message: text,
-      user_id: userId // <--- 关键修改：告诉后端是谁发的
+      session_id: sessionId || null // 如果是新对话，传 null
     });
 
-    const fullReply = response.data.reply; 
-    const lastMsg = conversation.value[conversation.value.length - 1];
+    // 🔥 关键点：如果是新对话，后端会返回新 session_id
+    if (!sessionId && res.data.session_id) {
+      // (A) 修改 URL (不刷新页面)，这样下次发消息就会带上 ID
+      router.replace(`/chat?session_id=${res.data.session_id}`);
+      // (B) 通知左边 Sidebar 刷新列表，把新标题显示出来
+      bus.emitRefresh();
+    }
 
-    // 4. 开始打字机效果
-    lastMsg.isLoading = false; 
+    // 4. 处理打字机回复
+    const aiMsg = conversation.value[conversation.value.length - 1];
+    aiMsg.isLoading = false;
     isLoading.value = false;
-    isTyping.value = true;
-
+    
+    const reply = res.data.reply;
     let i = 0;
-    const typeInterval = setInterval(() => {
-      if (i < fullReply.length) {
-        lastMsg.content += fullReply.charAt(i);
+    isTyping.value = true;
+    const t = setInterval(() => {
+      if (i < reply.length) {
+        aiMsg.content += reply.charAt(i);
         i++;
-        scrollToBottom(); // 打字时也要跟随滚动
       } else {
-        clearInterval(typeInterval);
+        clearInterval(t);
         isTyping.value = false;
-        // 保存这次对话结束的状态，如果需要的话
       }
-    }, 30); // 打字速度
+    }, 30);
 
-  } catch (error) {
-    console.error('API Error:', error);
-    const lastMsg = conversation.value[conversation.value.length - 1];
-    lastMsg.content = "抱歉，连接出了点问题，请检查后端服务是否启动。";
-    lastMsg.isLoading = false;
+  } catch (e) {
+    console.error(e);
     isLoading.value = false;
-    isTyping.value = false;
   }
-};
-
-// 辅助函数：滚动到底部
-const scrollToBottom = () => {
-  nextTick(() => {
-    // 如果 ChatWindow 组件里暴露了滚动方法，或者我们直接操作 DOM
-    // 这里假设 ChatWindow 会自动监听 messages 变化并滚动
-    // 如果没有，可以简单粗暴地滚动 document
-    // window.scrollTo(0, document.body.scrollHeight);
-  });
-};
-
-// 退出登录
-const handleLogout = () => {
-  localStorage.removeItem('user_id');
-  localStorage.removeItem('username');
-  router.push('/login');
 };
 </script>
 
 <style scoped>
-.chat-page-container {
-  height: 100%; 
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  overflow: hidden;
+.chat-pure-container {
+  height: 100%; display: flex; flex-direction: column; background: #fff;
 }
-
 .chat-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fff;
+  padding: 16px 24px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center;
 }
-
-.header-info h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
-.status-badge {
-  font-size: 12px;
-  color: #52c41a;
-  background: #f6ffed;
-  padding: 2px 8px;
-  border-radius: 10px;
-  border: 1px solid #b7eb8f;
-  margin-left: 8px;
-}
-
-.logout-btn {
-  border: none;
-  background: none;
-  color: #999;
-  cursor: pointer;
-  font-size: 14px;
-}
-.logout-btn:hover {
-  color: #ff4d4f;
+.header-info h3 { margin: 0; font-size: 16px; color: #333; display: inline-block; }
+.status-badge { 
+  font-size: 12px; color: #52c41a; background: #f6ffed; padding: 2px 8px; 
+  border-radius: 10px; margin-left: 8px; border: 1px solid #b7eb8f; 
 }
 </style>
