@@ -1,13 +1,11 @@
 <template>
   <div class="chat-window" ref="scrollContainer">
-    <!-- 欢迎状态 -->
     <div v-if="messages.length === 0" class="empty-state">
       <div class="empty-icon">👋</div>
       <h3>开始一次新的心灵对话</h3>
       <p>这里是安全的空间，请随意倾诉你的烦恼或分享你的快乐。</p>
     </div>
 
-    <!-- 消息列表 -->
     <div v-else class="message-list">
       <div 
         v-for="(msg, index) in messages" 
@@ -15,29 +13,43 @@
         class="message-row"
         :class="msg.sender === 'user' ? 'message-user' : 'message-ai'"
       >
-        <!-- 头像 -->
         <div class="avatar">
           <span v-if="msg.sender === 'ai'" role="img">🤖</span>
           <span v-else role="img">👤</span>
         </div>
 
-        <!-- 气泡 -->
         <div class="bubble-container">
           <div class="bubble">
-            <!-- 加载动画 -->
+            
             <div v-if="msg.isLoading" class="typing-indicator">
               <span></span><span></span><span></span>
             </div>
-            <!-- 文本内容 -->
+
+            <div v-else-if="isImage(msg.content)" class="image-wrapper">
+              <img 
+                :src="msg.content" 
+                class="chat-image" 
+                @click="previewImage(msg.content)"
+                @load="handleImageLoad" 
+                @error="handleImageError"
+                alt="图片"
+              />
+            </div>
+
             <div v-else class="text-content" :class="{'error-text': msg.isError}">
               {{ msg.content }}
             </div>
+
           </div>
-          <!-- 时间戳 (可选) -->
-          <!-- <span class="timestamp">10:23</span> -->
         </div>
       </div>
     </div>
+
+    <div v-if="previewUrl" class="image-preview-modal" @click="closePreview">
+      <img :src="previewUrl" @click.stop />
+      <span class="close-btn" @click="closePreview">×</span>
+    </div>
+
   </div>
 </template>
 
@@ -52,37 +64,80 @@ const props = defineProps({
 });
 
 const scrollContainer = ref(null);
+const previewUrl = ref(null);
 
-// 修改点：添加 { deep: true }
-// 这样不仅监听数组长度变化，还能监听到 msg.content 的逐字变化
+// 🔥🔥🔥 核心修复：超强兼容性的图片判断逻辑
+const isImage = (content) => {
+  if (!content || typeof content !== 'string') return false;
+  
+  // 调试日志：看看到底传进来了什么
+  // console.log("Checking content:", content);
+
+  // 1. 本地预览图 (blob:http://...) -> 必是图片
+  if (content.startsWith('blob:')) return true;
+  
+  // 2. Base64 图片 -> 必是图片
+  if (content.startsWith('data:image/')) return true;
+
+  // 3. 后端上传路径 (/uploads/) -> 必是图片
+  if (content.includes('/uploads/')) return true;
+
+  // 4. 常规图片后缀检测
+  const imgExtensions = /\.(jpeg|jpg|gif|png|webp|bmp|svg)($|\?)/i;
+  return imgExtensions.test(content);
+};
+
+const previewImage = (url) => {
+  previewUrl.value = url;
+};
+
+const closePreview = () => {
+  previewUrl.value = null;
+};
+
+const scrollToBottom = async () => {
+  await nextTick();
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+  }
+};
+
+// 图片加载成功后，再次滚动到底部
+const handleImageLoad = () => {
+  scrollToBottom();
+};
+
+// 图片加载失败处理
+const handleImageError = (e) => {
+  console.error("图片加载失败:", e.target.src);
+  e.target.alt = "❌ 图片加载失败";
+  e.target.style.background = "#f5f5f5";
+  e.target.style.padding = "20px";
+  e.target.style.minWidth = "150px";
+};
+
 watch(
   () => props.messages, 
-  async () => {
-    await nextTick();
-    if (scrollContainer.value) {
-      // 只有当距离底部不远时才自动滚动（防止用户正在看上面的历史记录时被强行拉下来）
-      // 但对于简单的打字机效果，直接滚到底部体验通常最好
-      scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
-    }
+  () => {
+    scrollToBottom();
   }, 
-  { deep: true } // <--- 关键：深度监听
+  { deep: true, immediate: true }
 );
 </script>
 
 <style scoped>
 .chat-window {
-  flex: 1; /* 占满剩余垂直空间 */
+  flex: 1;
   overflow-y: auto;
   padding: 24px;
-  background-color: #f4f7f9; /* 与 MainLayout 背景一致 */
+  background-color: #f4f7f9;
   scroll-behavior: smooth;
+  position: relative;
 }
 
-/* 滚动条美化 */
 .chat-window::-webkit-scrollbar { width: 6px; }
 .chat-window::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 4px; }
 
-/* 空状态 */
 .empty-state {
   height: 100%;
   display: flex;
@@ -95,7 +150,6 @@ watch(
 .empty-icon { font-size: 48px; margin-bottom: 16px; }
 .empty-state h3 { color: #333; margin-bottom: 8px; }
 
-/* 消息行 */
 .message-row {
   display: flex;
   margin-bottom: 20px;
@@ -104,16 +158,10 @@ watch(
 }
 .message-user { flex-direction: row-reverse; }
 
-/* 头像 */
 .avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 .message-ai .avatar { background: #fff; border: 1px solid #eee; }
@@ -129,25 +177,35 @@ watch(
   word-wrap: break-word;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   position: relative;
+  overflow: hidden; 
 }
 
-/* AI 气泡样式 */
 .message-ai .bubble {
-  background: #fff;
-  color: #333;
-  border-top-left-radius: 2px; /* 小尖角效果 */
+  background: #fff; color: #333; border-top-left-radius: 2px;
+}
+.message-user .bubble {
+  background: #1890ff; color: #fff; border-top-right-radius: 2px;
 }
 
-/* 用户气泡样式 */
-.message-user .bubble {
-  background: #1890ff; /* 主色调 */
-  color: #fff;
-  border-top-right-radius: 2px;
+/* 🔥 图片样式：去除负边距，增加最小尺寸防止塌陷 */
+.image-wrapper {
+  display: block;
+  min-width: 100px; /* 防止图片未加载时气泡塌陷 */
+  min-height: 100px;
+}
+
+.chat-image {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain; /* 保证图片完整显示 */
+  cursor: zoom-in;
+  border-radius: 8px;
+  background-color: #fff; /* 增加背景色 */
 }
 
 .error-text { color: #ff4d4f; }
 
-/* 输入中动画 */
 .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
 .typing-indicator span {
   width: 6px; height: 6px; background: #999; border-radius: 50%;
@@ -159,4 +217,28 @@ watch(
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
 }
+
+.image-preview-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  animation: fadeIn 0.2s;
+}
+.image-preview-modal img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.close-btn {
+  position: absolute;
+  top: 20px; right: 30px;
+  color: white; font-size: 30px; cursor: pointer;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
