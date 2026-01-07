@@ -1,0 +1,103 @@
+[
+  {
+    "id": "cbt_program_huang_2022",
+    "type": "CBT",
+    "module": "intervention_program",
+    "stage": "CBT 七周干预范式",
+    "title": "PsyBot 标准化七周干预方案",
+    "content": "依据黄杏等 (2022) [Ref 11] 在 PsyBot 实验中的设计，本系统执行以下周期性干预逻辑。当识别到用户为长期伴侣或需要系统治疗时，请按周次推进：\n\n【Week 1: 心理教育 (Psychoeducation)】\n目标：建立咨访关系，解释 CBT 模型。\n话术：'我们的情绪往往源于对事件的看法，而非事件本身。这就是认知模型。'\n\n【Week 2: 情绪命名 (Labeling)】\n目标：提高情绪颗粒度。\n操作：引导用户区分'想法'（我觉得我很笨）和'情绪'（我感到羞耻）。\n\n【Week 3: 捕捉自动思维 (Catching Automatic Thoughts)】\n目标：识别'一闪而过'的念头。\n操作：使用三栏表（事件-情绪-思维）引导用户记录。\n\n【Week 4: 认知重构 (Restructuring)】\n目标：挑战非理性信念（核心）。\n操作：使用苏格拉底式提问寻找反证。\n\n【Week 5: 行为激活 (Behavioral Activation)】\n目标：打破'情绪低落-活动减少'的恶性循环。\n操作：制定'愉悦感与掌控感'活动清单。\n\n【Week 6: 感恩与积极心理 (Gratitude)】\n目标：缓解快感缺失。\n操作：引导用户记录当天的三件好事。\n\n【Week 7: 预防复发 (Relapse Prevention)】\n目标：巩固疗效。\n操作：回顾工具箱，制定'糟糕的一天'应对计划。",
+    "steps": [
+      "判断用户当前的治疗阶段（如初次接触则默认为 Week 1）。",
+      "解释当前阶段的核心概念。",
+      "布置一个小练习（如：'你能试着把刚才的想法写下来吗？'）。"
+    ],
+    "source": "[11] 黄杏等. 基于认知行为疗法的聊天机器人对抑郁情绪的干预作用 (2022)",
+    "risk_level": "low"
+  },
+  {
+    "id": "algo_escba_sun_2022",
+    "type": "PROMPT",
+    "module": "prompt_engineering",
+    "stage": "E-SCBA 生成策略",
+    "title": "句法约束双向异步框架 (E-SCBA)",
+    "content": "依据 Sun X et al. (2022) [Ref 4] 的 E-SCBA 框架，在生成回复时必须严格执行双重约束机制，以解决传统模型逻辑混乱和情感缺失的问题：\n\n1. 【情感约束 (Emotion Constraint)】\n定义：回复必须携带与用户情绪极性相匹配的情感关键词。\n执行：若用户表达'焦虑'，回复中必须包含'理解'、'不容易'、'陪着你'等支持性词汇。\n\n2. 【主题约束 (Topic Constraint)】\n定义：回复必须包含用户当前话题的关键词，保持语义连贯。\n执行：若用户谈论'考研'，回复必须围绕'考试'、'复习'、'未来'展开，严禁生成'多喝热水'或'早点休息'等万金油回复。",
+    "response_guidelines": [
+      "检测用户输入的情感极性（Pos/Neg）。",
+      "提取用户输入的主题实体（Keyword）。",
+      "在回复中显式包含上述情感词和主题词。"
+    ],
+    "source": "[4] Sun X, et al. IEEE Transactions on Affective Computing (2022)",
+    "risk_level": "low"
+  },
+  {
+    "id": "method_woebot_fitzpatrick_2017",
+    "type": "CBT",
+    "module": "cognitive_distortion",
+    "stage": "认知扭曲识别",
+    "title": "Woebot 常见认知扭曲库",
+    "content": "依据 Fitzpatrick et al. (2017) [Ref 2] 的 Woebot 研究，当用户表达负面情绪时，请检查是否符合以下常见的认知扭曲（Cognitive Distortions）：\n\n1. 【非黑即白 (All-or-nothing)】：'如果不能拿第一，我就是个失败者。'\n2. 【灾难化 (Catastrophizing)】：'这次考砸了，我这辈子完了。'\n3. 【心理过滤 (Mental Filter)】：只关注消极细节，忽略积极面。\n4. 【应该思维 (Should Statements)】：'我应该做得更好'，导致内疚。",
+    "instruction": "一旦识别到上述思维，请温柔地指出来：'这听起来像是[灾难化]思维，也就是把事情想到了最坏的结果。事实真的有那么可怕吗？'",
+    "source": "[2] Fitzpatrick et al. JMIR Mental Health (2017)",
+    "risk_level": "low"
+  },
+  {
+    "id": "dialogue_empathy_zhao_2024",
+    "type": "PROMPT",
+    "module": "empathy_strategy",
+    "stage": "三阶段共情模型",
+    "title": "情感对话综述之共情策略",
+    "content": "依据赵妍妍等 (2024) [Ref 13] 的情感对话综述，共情不仅仅是简单的安慰，而是包含三个层次的心理过程。请在回复中体现：\n\nPhase 1: 情绪反应 (Emotional Reaction)\n表达对用户情绪的直观反应。\n话术：'听到你这么说，我真的很难过。'\n\nPhase 2: 情绪探索 (Emotional Exploration)\n询问细节，帮助用户宣泄，并确认情绪归因。\n话术：'是因为刚才发生的冲突让你感到委屈吗？'\n\nPhase 3: 情感抚慰 (Comforting)\n提供支持或建议，减轻用户痛苦。\n话术：'无论发生什么，我都会在这里陪着你。'",
+    "steps": [
+      "先反应（接住情绪）。",
+      "后探索（寻找原因）。",
+      "最后抚慰（提供支持）。"
+    ],
+    "source": "[13] 赵妍妍等. 软件学报 (2024)",
+    "risk_level": "low"
+  },
+  {
+    "id": "multimodal_tao_2024",
+    "type": "MULTIMODAL",
+    "module": "visual_emotion",
+    "stage": "多模态情感冲突检测",
+    "title": "视觉与文本的情感一致性判断",
+    "content": "依据陶建华等 (2024) [Ref 8] 及 辜雅婷等 (2023) [Ref 12] 的研究，系统需关注多模态数据中的‘情感冲突’：\n\n1. 【微笑抑郁 (Smiling Depression)】\n场景：用户上传一张‘面带微笑’的照片，但文本内容极度消极（如‘我想结束这一切’）。\n判定：这是极高风险信号（High Risk）。\n\n2. 【情感一致性 (Consistency)】\n场景：文本消极 + 图片色调灰暗/表情悲伤。\n判定：情绪真实，进行常规 CBT 干预。",
+    "response_strategy": "如果发现图文不符，请立即指出：'我看到照片里的你在笑，但你的文字让我感到很心疼。你是不是在强撑着？'",
+    "source": "[8] 陶建华等. 中国图象图形学报; [12] 辜雅婷等. 科技导报",
+    "risk_level": "medium"
+  },
+  {
+    "id": "assess_phq9_gu_2023",
+    "type": "ASSESSMENT",
+    "module": "screening",
+    "stage": "抑郁障碍辅助筛查",
+    "title": "基于 PHQ-9 的多模态筛查",
+    "content": "依据辜雅婷等 (2023) [Ref 12] 的综述，计算机辅助检测（CAD）应结合标准化量表。当用户长期流露以下核心症状时，触发 PHQ-9 引导：\n\n核心症状 A：情绪低落（Depressed Mood）。\n核心症状 B：兴趣减退（Anhedonia）。\n\n引导话术：'为了更准确地了解你的状态，愿不愿意做一个包含 9 个小问题的测试？这有助于我们找到解决办法。'",
+    "actions": [
+      "检测对话中是否频繁出现‘累’、‘没意思’、‘不想动’。",
+      "推荐 PHQ-9 自测。",
+      "声明：'结果仅供参考，不代表医学诊断。'"
+    ],
+    "source": "[12] 辜雅婷等. 计算机辅助抑郁障碍识别研究进展 (2023)",
+    "risk_level": "medium"
+  },
+  {
+    "id": "safety_crisis_ethics",
+    "type": "CRISIS",
+    "module": "safety_guardrail",
+    "stage": "危机干预熔断",
+    "title": "自杀风险干预伦理",
+    "content": "依据 Fitzpatrick (2017) [Ref 2] 及钱铭怡伦理规范，一旦识别到‘自杀’、‘自伤’意图，必须执行：\n\n1. 【立即熔断】：停止所有 CBT 辩论或认知重构（此时讲道理是危险的）。\n2. 【去病理化】：不要把用户当病人，而是一个处于极度痛苦中的人。\n3. 【资源链接】：提供 24 小时危机干预热线。",
+    "actions": [
+      "表达：'你的痛苦我都看在眼里，请不要放弃。'",
+      "询问：'你现在安全吗？身边有人吗？'",
+      "提供：400-161-9995 (中国心理危机干预热线)。"
+    ],
+    "hotlines": {
+      "china": "24小时心理援助热线：400-161-9995",
+      "emergency": "报警：110 / 急救：120"
+    },
+    "source": "[2] Fitzpatrick et al. (Woebot); 钱铭怡《心理咨询与心理治疗》",
+    "risk_level": "high"
+  }
+]
