@@ -1,6 +1,43 @@
 # Changelog
 
 本项目记录 **AI-Counselor（心理健康咨询系统）** 的全部重要迭代历程，涵盖算法、系统架构、多模态交互与伦理安全设计。
+---
+---
+## [2026-01-10] RAG 架构重构与专业知识库体系构建
+
+### 🧠 核心架构升级 (RAG 2.0)
+
+- **向量数据库集成 (Vector Database Integration)** - 弃用基于 JSON 的简易检索，正式部署 **ChromaDB** 向量数据库。
+  - 引入 **Sentence-Transformers (all-MiniLM-L6-v2)** 模型，实现高维语义空间的文本嵌入（Embedding）。
+  - 实现了基于语义相似度（Semantic Similarity）的检索机制，显著提升了面对用户模糊提问时的召回准确率。
+
+- **智能知识构建管线 (ETL Pipeline)** - 重写 `build_knowledge.py`，升级为**递归式文档扫描**引擎。
+  - 支持多模态数据源处理：
+    - **非结构化文本 (.txt)**：自动进行切片（Chunking）与向量化，用于存储理论书籍与对话语料。
+    - **结构化数据 (.json)**：针对心理量表（如 PHQ-9）进行特殊解析与索引。
+  - 实现了自动元数据标签（Metadata Tagging）功能，根据目录结构自动为知识打标（如 `category: cbt`, `stage: crisis`），支持混合检索。
+
+---
+
+### 📚 数据层重构 (Data Layer)
+
+- **分层分级知识体系** 建立了符合毕设标准的专业目录结构 (`backend/data/`)，实现知识解耦：
+  - `knowledge/dsm_symptom/`：收录 **DSM-5** 诊断标准（抑郁症/焦虑症核心症状）。
+  - `knowledge/cbt/`：存储 **E-SCBA 理论**、认知扭曲识别指南及标准化干预话术。
+  - `knowledge/safety/`：确立危机干预熔断机制与伦理规范（基于《中国心理学会伦理守则》）。
+  - `scales/`：标准化存储心理测评量表，支持前端动态渲染。
+
+- **学术理论的非结构化迁移** - 将原有的 `cbt_knowledge.json` 拆解为自然语言文本（如 `academic_theory.txt`）。
+  - **优化逻辑**：利用 LLM 对自然语言上下文理解的优势，替代僵化的 Key-Value 匹配，使 AI 能更灵活、自然地引用“PsyBot 七周干预范式”等复杂理论。
+
+---
+
+### 🛡️ 工程与伦理优化
+
+- **环境隔离与依赖管理** - 规范化 `.venv` 虚拟环境配置，统一全栈依赖库（`chromadb`, `sentence-transformers` 等）。
+  - 完善 `.gitignore` 策略，防止向量库二进制文件与敏感配置上传。
+
+- **冷启动与数据增强** - 保留并优化了模拟数据生成逻辑（Mock Data Generation），涵盖“考试/面试/情感”等高频场景，确保系统在缺乏海量真实语料时的基础鲁棒性。
 
 ---
 

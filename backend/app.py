@@ -15,7 +15,7 @@ from models import User, ChatLog, ChatSession
 try:
     from llm.qwen_client import QwenClient
     from rag.retriever import rag_engine
-    from rag.prompt_builder import PromptBuilder
+    from rag.prompt_builder import prompt_engine  # ✅ 修改：导入实例化后的引擎
     from rag.safety import SafetyGuard
 except ImportError as e:
     print(f"❌ 模块导入失败: {e}")
@@ -166,7 +166,7 @@ def chat():
         }
 
     is_crisis = SafetyGuard.check_crisis(knowledge)
-    system_prompt = PromptBuilder.build(knowledge)
+    system_prompt = prompt_engine.build(knowledge) # ✅ 修改：使用实例调用 build
     
     # 准备历史记录
     history = ChatLog.query.filter_by(session_id=session_id).order_by(ChatLog.created_at.desc()).limit(6).all()
@@ -226,7 +226,8 @@ if __name__ == "__main__":
         try:
             db.create_all()
             print("✅ 数据库连接成功")
-        except: print("❌ 数据库连接失败，请检查配置")
+        except Exception as e: # <--- 修改了这里
+            print(f"❌ 数据库连接失败: {e}") # <--- 让它打印具体错误
     
     print("🚀 服务启动: http://127.0.0.1:8080")
     app.run(host="127.0.0.1", port=8080, debug=True)
