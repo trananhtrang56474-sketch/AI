@@ -19,26 +19,50 @@
       </a>
     </div>
 
+    <div class="aside-card analysis-card" v-if="analysis.emotion">
+      <div class="section-header">
+        <div class="title-group">
+          <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <h3>实时心理映像</h3>
+        </div>
+        <span class="live-badge">LIVE</span>
+      </div>
+      
+      <div class="monitor-grid">
+        <div class="monitor-item" :style="{ borderLeftColor: emotionColor }">
+          <label>当前情绪</label>
+          <div class="value" :style="{ color: emotionColor }">
+            {{ analysis.emotion }}
+          </div>
+        </div>
+        
+        <div class="monitor-item strategy-item">
+          <label>AI策略</label>
+          <div class="value strategy-text">{{ strategyName }}</div>
+        </div>
+        
+        <div class="monitor-item trend-item">
+          <label>变化趋势</label>
+          <div class="value small">{{ trendName }}</div>
+        </div>
+      </div>
+    </div>
     <div class="aside-card">
       <div class="section-header">
         <div class="title-group">
           <svg class="section-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
           <h3>健康小贴士</h3>
         </div>
         <a href="#" class="more-link">更多</a>
       </div>
       <ul class="info-list">
-        <li>
-          <a href="#">如何应对突如其来的焦虑？</a>
-        </li>
-        <li>
-          <a href="#">正念呼吸的 5 个简单步骤</a>
-        </li>
-        <li>
-          <a href="#">建立积极的睡眠习惯</a>
-        </li>
+        <li><a href="#">如何应对突如其来的焦虑？</a></li>
+        <li><a href="#">正念呼吸的 5 个简单步骤</a></li>
+        <li><a href="#">建立积极的睡眠习惯</a></li>
       </ul>
     </div>
     
@@ -76,7 +100,57 @@
 </template>
 
 <script setup>
-// 目前不需要脚本
+// ✨✨✨ 引入 Store ✨✨✨
+import { computed } from 'vue';
+import { authStore as store } from '../store.js';
+
+// 获取 store 里的分析数据
+const analysis = computed(() => store.analysisState || {});
+
+// 颜色映射
+const emotionColor = computed(() => {
+  // 颜色映射建议
+const map = {
+    '危机': '#ff0000', // 红
+    '愤怒': '#f56c6c', // 浅红
+    '焦虑': '#e6a23c', // 橙
+    '抑郁': '#909399', // 灰
+    '悲伤': '#535c68', // 深灰蓝 (New)
+    '愧疚': '#8e44ad', // 紫 (New)
+    '迷茫': '#95a5a6', // 青灰 (New)
+    '积极': '#f1c40f', // 金黄 (New - 亮眼！)
+    '平静': '#67c23a'  // 绿
+};
+  return map[analysis.value.emotion] || '#409eff';
+});
+
+// 策略中文名
+const strategyName = computed(() => {
+  const map = {
+    "CRISIS_INTERVENTION": "🚨 危机干预",
+    "DEEP_VALIDATION": "❤️ 深度共情",
+    "EMPATHY_SUPPORT": "🤝 情感支持",
+    "COGNITIVE_RESTRUCTURING": "🧠 认知重构",
+    "DISTRESS_TOLERANCE": "🛡️ 痛苦耐受",
+    "DE_ESCALATION": "🧊 情绪降温",
+    "STRENGTH_BUILDING": "🌟 优势探索",
+    "GENERAL_SUPPORT": "☕ 一般陪伴",
+    "VISUAL_ANALYSIS": "👁️ 视觉分析"
+  };
+  return map[analysis.value.strategy] || "一般陪伴";
+});
+
+// 趋势中文名
+const trendName = computed(() => {
+  const map = {
+    "FIRST_CONTACT": "初次接触", 
+    "FLUCTUATING": "波动中 ~",
+    "IMPROVING": "正在好转 📈", 
+    "WORSENING": "需关注 📉",
+    "PERSISTENT_NEGATIVE": "持续低落 🌧️"
+  };
+  return map[analysis.value.trend] || "分析中...";
+});
 </script>
 
 <style scoped>
@@ -84,7 +158,6 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  /* 增加底部 padding，防止滚动到底部时贴边 */
   padding-bottom: 20px; 
 }
 
@@ -93,11 +166,10 @@
   background: #fff;
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); /* 与 Home 卡片一致 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   border: 1px solid rgba(0,0,0,0.02);
   transition: transform 0.2s ease;
 }
-
 .aside-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
@@ -112,35 +184,29 @@
   padding-bottom: 10px;
   border-bottom: 1px solid #f5f5f5;
 }
-
 .title-group {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
 .title-group h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
   color: #333;
 }
-
 .section-icon {
   width: 18px;
   height: 18px;
   color: #1890ff;
 }
-
 .more-link {
   font-size: 12px;
   color: #999;
   text-decoration: none;
   transition: color 0.2s;
 }
-.more-link:hover {
-  color: #1890ff;
-}
+.more-link:hover { color: #1890ff; }
 
 /* 列表样式 */
 .info-list {
@@ -148,14 +214,11 @@
   padding: 0;
   margin: 0;
 }
-
 .info-list li {
   margin-bottom: 10px;
   position: relative;
   padding-left: 12px;
 }
-
-/* 自定义列表圆点 */
 .info-list li::before {
   content: "";
   position: absolute;
@@ -167,60 +230,46 @@
   border-radius: 50%;
   transition: background-color 0.2s;
 }
-
-.info-list li:hover::before {
-  background-color: #1890ff;
-}
-
+.info-list li:hover::before { background-color: #1890ff; }
 .info-list a {
   text-decoration: none;
   color: #555;
   font-size: 13px;
   line-height: 1.5;
   transition: color 0.2s;
-  display: block; /* 增加点击区域 */
+  display: block;
 }
+.info-list a:hover { color: #1890ff; }
 
-.info-list a:hover {
-  color: #1890ff;
-}
-
-/* -------------------
-   紧急卡片特别样式
-   ------------------- */
+/* 紧急卡片样式 (保持不变) */
 .emergency-card {
   background: linear-gradient(135deg, #fff1f0 0%, #fff 100%);
   border: 1px solid #ffccc7;
   box-shadow: 0 4px 12px rgba(255, 77, 79, 0.1);
 }
-
 .emergency-card .card-header {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
 }
-
 .emergency-card h3 {
   margin: 0;
   font-size: 16px;
   color: #cf1322;
   font-weight: 700;
 }
-
 .alert-icon {
   color: #cf1322;
   width: 20px;
   height: 20px;
 }
-
 .emergency-text {
   font-size: 13px;
   color: #5c0011;
   margin: 0 0 16px 0;
   line-height: 1.5;
 }
-
 .emergency-btn {
   display: flex;
   align-items: center;
@@ -236,15 +285,62 @@
   box-shadow: 0 4px 10px rgba(245, 34, 45, 0.3);
   transition: all 0.2s;
 }
-
 .emergency-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 15px rgba(245, 34, 45, 0.4);
   filter: brightness(1.1);
 }
+.btn-icon { width: 16px; height: 16px; }
 
-.btn-icon {
-  width: 16px;
-  height: 16px;
+/* ✨✨✨ 新增：实时心理映像卡片样式 ✨✨✨ */
+.analysis-card {
+  border-left: 3px solid #1890ff; /* 默认蓝边 */
 }
+
+.live-badge {
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.monitor-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.monitor-item {
+  background: #f9fafc;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 4px solid #eee; /* 左侧色条 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.monitor-item label {
+  color: #909399;
+}
+
+.monitor-item .value {
+  font-weight: bold;
+  color: #606266;
+}
+
+.strategy-item { border-left-color: #8e44ad; } 
+.strategy-text { color: #8e44ad !important; }
+
+.trend-item { border-left-color: #3498db; }
 </style>

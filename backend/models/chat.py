@@ -44,4 +44,8 @@ class ChatLog(db.Model):
     
     role = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    
+    # ✨✨✨ 【唯一修改】添加情绪标签字段，修复 DB Error ✨✨✨
+    emotion_tag = db.Column(db.String(50), nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.now)

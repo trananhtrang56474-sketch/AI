@@ -15,3 +15,5 @@ backend/chroma_db/
 # IDE 配置
 .vscode/
 .idea/
+# 忽略原始数据文件夹
+backend/raw/

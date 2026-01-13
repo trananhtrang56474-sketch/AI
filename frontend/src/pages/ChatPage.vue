@@ -24,6 +24,7 @@ import { ref, watch, computed } from 'vue';
 import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 import { bus } from '../eventBus'; 
+import { authStore as store } from '../store.js';// ✨✨✨ 1. 引入 store
 import ChatWindow from '@/components/ChatWindow.vue';
 import MessageInput from '@/components/MessageInput.vue';
 
@@ -43,19 +44,43 @@ watch(() => route.query.session_id, async (newId) => {
     await loadHistory(newId);
   } else {
     conversation.value = [];
+    // 新对话时重置右侧面板状态
+    if (store.resetAnalysis) store.resetAnalysis();
   }
 }, { immediate: true });
 
 // 2. 加载历史
 const loadHistory = async (sessionId) => {
   try {
+    isLoading.value = true; // 加个加载状态体验更好
     const res = await axios.get(`http://127.0.0.1:8080/api/history?session_id=${sessionId}`);
-    conversation.value = res.data;
-  } catch (e) { console.error(e); }
+    
+    // ✨ 兼容性判断：
+    // 如果后端返回的是新结构 { messages: [], analysis: {} }
+    if (res.data.messages && res.data.analysis) {
+        conversation.value = res.data.messages;
+        
+        // 立即更新右侧面板！
+        store.updateAnalysis({
+            emotion: res.data.analysis.emotion,
+            strategy: res.data.analysis.strategy,
+            trend: res.data.analysis.trend
+        });
+    } 
+    // 防止后端还没改好导致的报错 (兼容旧的数组结构)
+    else if (Array.isArray(res.data)) {
+        conversation.value = res.data;
+    }
+    
+  } catch (e) { 
+    console.error("加载历史失败", e); 
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 // ==========================================
-// 🔥 核心修改：处理组合消息 (文字 + 图片)
+// 🔥 核心修改：处理组合消息 + 更新 Store
 // ==========================================
 const handleCompositeSend = async ({ text, file }) => {
   const userId = localStorage.getItem('user_id');
@@ -64,21 +89,17 @@ const handleCompositeSend = async ({ text, file }) => {
   // 1. 处理图片上传
   let imageUrl = null;
   if (file) {
-    // 立即在界面上显示用户发的图片 (使用本地预览 blob，体验更快)
     conversation.value.push({ sender: 'user', content: URL.createObjectURL(file) });
     
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      // 上传到后端获取真实 URL
       const uploadRes = await axios.post('http://127.0.0.1:8080/api/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       imageUrl = uploadRes.data.url;
     } catch (e) {
       console.error('图片上传失败', e);
-      // 如果上传失败，最好给用户一个提示，这里简单处理
       conversation.value.push({ sender: 'ai', content: '（图片上传失败，请重试）', isError: true });
       return; 
     }
@@ -94,16 +115,24 @@ const handleCompositeSend = async ({ text, file }) => {
   const aiMsgIndex = conversation.value.push({ sender: 'ai', content: '', isLoading: true }) - 1;
 
   try {
-    // 4. 构造发送给后端的 Payload
-    // 包含 message (文字) 和 image_url (图片链接)
+    // 4. 构造 Payload
     const payload = {
       user_id: userId,
       session_id: sessionId || null,
-      message: text || '[发送了图片]', // 确保 message 字段不为空，防止后端报错
-      image_url: imageUrl // 🔥 新增字段传给后端 RAG
+      message: text || '[发送了图片]', 
+      image_url: imageUrl 
     };
 
     const res = await axios.post('http://127.0.0.1:8080/api/chat', payload);
+
+    // ✨✨✨ 关键步骤：收到后端数据后，立即更新 Store ✨✨✨
+    // 这会让右侧的 AsidePanel 瞬间刷新！
+    store.updateAnalysis({
+        emotion: res.data.emotion,
+        strategy: res.data.strategy,
+        trend: res.data.trend
+    });
+    // ✨✨✨ 更新结束 ✨✨✨
 
     // 5. 如果是新会话，更新 URL 和 侧边栏
     if (!sessionId && res.data.session_id) {
