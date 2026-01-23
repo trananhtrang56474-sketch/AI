@@ -1,3 +1,4 @@
+# backend/models/chat.py
 from datetime import datetime
 from extensions import db
 
@@ -45,7 +46,11 @@ class ChatLog(db.Model):
     role = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, nullable=False)
     
-    # ✨✨✨ 【唯一修改】添加情绪标签字段，修复 DB Error ✨✨✨
+    # 情感标签 (保留)
     emotion_tag = db.Column(db.String(50), nullable=True)
+
+    # ✨✨✨ 【新增】心理健康评分 (0-100) ✨✨✨
+    # 默认 60 分 (对应 Valence=0 的平静状态)
+    emotion_score = db.Column(db.Integer, default=60)
     
     created_at = db.Column(db.DateTime, default=datetime.now)

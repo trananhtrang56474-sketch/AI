@@ -1,125 +1,175 @@
 <template>
-  <div class="chart-wrapper">
-    <Line
-      v-if="chartData && chartData.datasets && chartData.datasets.length > 0"
-      :data="chartData"
-      :options="chartOptions"
+  <div class="chart-container">
+    <v-chart 
+      v-if="chartData && chartData.scores && chartData.scores.length > 0" 
+      class="chart" 
+      :option="option" 
+      autoresize 
     />
     
     <div v-else class="empty-chart">
-      <span>📊</span>
-      <p>暂无情绪数据，快去和 AI 聊聊吧</p>
+      <div class="empty-icon">📊</div>
+      <p>暂无情绪数据</p>
+      <span>与 AI 多聊几句，生成你的心理画像</span>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { use } from 'echarts/core';
+import { CanvasRenderer } from 'echarts/renderers';
+import { LineChart } from 'echarts/charts';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler // 用于填充曲线下方的颜色
-} from 'chart.js';
-import { Line } from 'vue-chartjs';
+  GridComponent,
+  TooltipComponent,
+  VisualMapComponent,
+  MarkLineComponent
+} from 'echarts/components';
+import VChart from 'vue-echarts';
 
-// 注册 Chart.js 必须的组件
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+// 注册 ECharts 必需组件
+use([
+  CanvasRenderer,
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  VisualMapComponent,
+  MarkLineComponent
+]);
 
 const props = defineProps({
   chartData: {
     type: Object,
     required: true,
-    default: () => ({ labels: [], datasets: [] })
+    default: () => ({ dates: [], scores: [] })
   }
 });
 
-// --- 图表配置选项 (美化) ---
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false, // 允许图表填满父容器的高度
-  plugins: {
-    legend: {
-      display: false // 隐藏图例 (因为我们在 Home 页面卡片标题里已经写了)
+// 计算 ECharts 配置项
+const option = computed(() => {
+  return {
+    backgroundColor: 'transparent', 
+    
+    // ✨✨✨ 核心修复：防止被截断 ✨✨✨
+    grid: {
+      top: '15%',
+      bottom: '10%', // 留出空间
+      left: '5%',
+      right: '5%',
+      containLabel: true // 🔥 关键：自动计算空间，保证坐标轴文字不被切掉
     },
+
+    // 悬停提示框
     tooltip: {
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      titleColor: '#333',
-      bodyColor: '#666',
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#eee',
       borderWidth: 1,
-      padding: 10,
-      displayColors: false, // 不显示 tooltip 里的小色块
-      callbacks: {
-        label: function(context) {
-          return `情绪指数: ${context.parsed.y}`;
+      textStyle: { color: '#333' },
+      formatter: function (params) {
+        const score = params[0].value;
+        let status = '';
+        if (score >= 70) status = '🌞 积极';
+        else if (score >= 40) status = '🍃 平静';
+        else status = '🌧️ 负面';
+        
+        return `
+          <div style="font-size:12px; color:#999; margin-bottom:4px;">${params[0].name}</div>
+          <div style="font-weight:bold; font-size:14px;">${status}</div>
+          <div style="font-size:12px;">心理指数: <span style="font-weight:bold;">${score}</span></div>
+        `;
+      }
+    },
+
+    // X轴 (时间)
+    xAxis: {
+      type: 'category',
+      data: props.chartData.dates,
+      boundaryGap: false,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { 
+        color: '#9ca3af', 
+        fontSize: 11,
+        interval: 'auto' // 自动隐藏过密的标签
+      }
+    },
+
+    // Y轴 (分数)
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 100,
+      splitNumber: 3,
+      axisLabel: { color: '#9ca3af', fontSize: 11 },
+      splitLine: {
+        lineStyle: { type: 'dashed', color: '#f3f4f6' }
+      }
+    },
+
+    // 视觉映射 (让线条变色)
+    visualMap: {
+      show: false,
+      dimension: 1, 
+      pieces: [
+        { gt: 0, lte: 40, color: '#ff6b6b' },   // 红
+        { gt: 40, lte: 70, color: '#4ecdc4' },  // 青
+        { gt: 70, lte: 100, color: '#feca57' }  // 黄
+      ],
+      outOfRange: { color: '#ccc' }
+    },
+
+    // 数据系列
+    series: [
+      {
+        data: props.chartData.scores,
+        type: 'line',
+        smooth: 0.4, 
+        symbol: 'circle',
+        symbolSize: 6, // 稍微调小一点，显得更精致
+        itemStyle: {
+          borderWidth: 2,
+          borderColor: '#fff'
+        },
+        lineStyle: {
+          width: 3,
+          shadowColor: 'rgba(0,0,0,0.1)',
+          shadowBlur: 10,
+          shadowOffsetY: 5
+        },
+        areaStyle: {
+          opacity: 0.15
+        },
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          data: [
+            { yAxis: 40, lineStyle: { color: '#ff6b6b', type: 'dotted', opacity: 0.4 } },
+            { yAxis: 70, lineStyle: { color: '#feca57', type: 'dotted', opacity: 0.4 } }
+          ],
+          label: { show: false }
         }
       }
-    }
-  },
-  scales: {
-    x: {
-      grid: {
-        display: false, // 隐藏 X 轴网格线，看起来更干净
-        drawBorder: false
-      },
-      ticks: {
-        color: '#999',
-        font: { size: 12 }
-      }
-    },
-    y: {
-      grid: {
-        color: '#f0f0f0', // Y 轴网格线改淡一点
-        borderDash: [5, 5] // 虚线效果
-      },
-      ticks: {
-        display: false, // 隐藏 Y 轴数值，只看趋势更直观
-      },
-      border: {
-        display: false // 隐藏 Y 轴左边的轴线
-      },
-      min: 0, // 假设情绪分最低 0
-      max: 10 // 假设情绪分最高 10
-    }
-  },
-  elements: {
-    line: {
-      tension: 0.4 // 0.4 让线条变成平滑的贝塞尔曲线，而不是折线
-    },
-    point: {
-      radius: 4,
-      hoverRadius: 6,
-      backgroundColor: '#fff',
-      borderWidth: 2
-    }
-  },
-  interaction: {
-    intersect: false,
-    mode: 'index',
-  },
-};
+    ]
+  };
+});
 </script>
 
 <style scoped>
-.chart-wrapper {
+.chart-container {
   width: 100%;
-  height: 100%; /* 填满父容器 */
+  height: 100%;
   position: relative;
+  background: #fff;
+  border-radius: 12px; 
+  /* 这里的 padding 可以去掉，由 ECharts grid 控制，防止双重边距 */
+  box-sizing: border-box;
+}
+
+.chart {
+  width: 100%;
+  height: 100%;
 }
 
 .empty-chart {
@@ -131,17 +181,11 @@ const chartOptions = {
   align-items: center;
   background-color: #f9fafb;
   border-radius: 12px;
+  border: 1px dashed #e5e7eb;
   color: #9ca3af;
 }
 
-.empty-chart span {
-  font-size: 32px;
-  margin-bottom: 8px;
-  opacity: 0.5;
-}
-
-.empty-chart p {
-  font-size: 14px;
-  margin: 0;
-}
+.empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.5; }
+.empty-chart p { font-size: 14px; margin: 0 0 4px 0; font-weight: 600; color: #4b5563; }
+.empty-chart span { font-size: 12px; color: #9ca3af; }
 </style>

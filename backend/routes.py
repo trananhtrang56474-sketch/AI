@@ -1,3 +1,4 @@
+# backend/routes.py
 import os
 from datetime import datetime
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
@@ -55,32 +56,26 @@ def get_sessions():
     return jsonify([{"id": s.id, "title": s.title, "created_at": s.created_at.strftime("%m-%d %H:%M")} for s in sessions])
 
 # ==================================================================
-# 🔥 核心修改：升级版历史记录接口 (支持状态回溯)
+# 🔥 历史记录接口 (支持状态回溯)
 # ==================================================================
 @api_bp.route("/history", methods=["GET"])
 def get_history():
     sid = request.args.get("session_id")
     if not sid: return jsonify([])
 
-    # 1. 获取消息记录 (按时间正序)
+    # 1. 获取消息记录
     logs = ChatLog.query.filter_by(session_id=sid).order_by(ChatLog.created_at.asc()).all()
     
-    # 2. ✨✨✨ 状态回溯逻辑 ✨✨✨
-    # 目的：当用户点开历史记录时，右侧面板要恢复到那次对话最后的状态，而不是显示默认值。
-    
-    # A. 回溯情绪 (找最后一条用户的消息，读取当时的 emotion_tag)
+    # 2. 状态回溯
     last_user_log = ChatLog.query.filter_by(session_id=sid, role='user').order_by(ChatLog.created_at.desc()).first()
+    # 兼容旧数据，如果 tag 是 JSON 字符串就不用管，如果不是就直接用
     restored_emotion = last_user_log.emotion_tag if (last_user_log and last_user_log.emotion_tag) else "平静"
     
-    # B. 回溯策略 (找最后一条 AI 的消息，因为我们在 chat 接口里把策略存进去了)
     last_ai_log = ChatLog.query.filter_by(session_id=sid, role='assistant').order_by(ChatLog.created_at.desc()).first()
     restored_strategy = last_ai_log.emotion_tag if (last_ai_log and last_ai_log.emotion_tag) else "GENERAL_SUPPORT"
     
-    # C. 回溯趋势 (调用 agent 重新计算一遍)
     restored_trend = analyze_trend(sid)
 
-    # 3. 返回组合数据
-    # 注意：这里的数据结构变了！以前是直接返回数组，现在是返回一个字典对象
     return jsonify({
         "messages": [{"sender": "user" if l.role=="user" else "ai", "content": l.content} for l in logs],
         "analysis": {
@@ -108,7 +103,59 @@ def upload_file():
     except: return jsonify({'error': '保存失败'}), 500
 
 # ===========================
-# 3. 🔥 核心聊天接口 (智能 Agent + 防御门控版)
+# 📊 新增：图表数据接口 (ECharts 专用)
+# ===========================
+@api_bp.route("/chart-data", methods=["GET"])
+def get_chart_data():
+    user_id = request.args.get("user_id")
+    session_id = request.args.get("session_id")
+    
+    if not user_id: return jsonify({"dates": [], "scores": []})
+
+    # 1. 查询最近 10 条用户消息
+    query = ChatLog.query.filter_by(user_id=user_id, role='user')
+    if session_id:
+        query = query.filter_by(session_id=session_id)
+        
+    logs = query.order_by(ChatLog.created_at.desc()).limit(10).all()
+    logs.reverse() # 翻转为时间正序
+    
+    # 2. 兜底映射表 (兼容旧数据的中文/英文标签)
+    fallback_map = {
+        '危机': 10, 'crisis': 10,
+        '焦虑': 30, 'anxiety': 30, '抑郁': 25, 'depression': 25,
+        '痛苦': 20, 'distress': 20, '愤怒': 35, 'anger': 35,
+        '悲伤': 30, 'grief': 30, '愧疚': 30, 'guilt': 30,
+        '迷茫': 45, 'confusion': 45,
+        '平静': 60, 'neutral': 60,
+        '积极': 85, 'positive': 85
+    }
+
+    dates = []
+    scores = []
+    
+    for log in logs:
+        dates.append(log.created_at.strftime("%H:%M"))
+        
+        # 优先用数据库里的分数，没有则查表估算
+        if log.emotion_score is not None:
+            scores.append(log.emotion_score)
+        else:
+            tag = log.emotion_tag or '平静'
+            score = 60 
+            for key, val in fallback_map.items():
+                if key in tag:
+                    score = val
+                    break
+            scores.append(score)
+
+    return jsonify({
+        "dates": dates,
+        "scores": scores
+    })
+
+# ===========================
+# 3. 🔥 核心聊天接口 (智能 Agent + 防御门控 + 评分版)
 # ===========================
 @api_bp.route("/chat", methods=["POST"])
 def chat():
@@ -132,15 +179,19 @@ def chat():
         except: return jsonify({"error": "会话创建失败"}), 500
 
     # B. 🧠 智能体感知与决策
-    current_emotion = "neutral"
+    current_emotion = "平静"     # 默认值
+    current_score = 60          # 默认值
     emotion_trend = "FIRST_CONTACT"
     policy = {"stage": "VISUAL", "instruction": "多模态回复"}
     
     if user_msg and user_msg != '[发送了图片]':
-        # 1. 感知
-        current_emotion = analyze_emotion(user_msg)
+        # 1. 感知 (现在返回字典)
+        analysis_result = analyze_emotion(user_msg)
+        current_emotion = analysis_result.get("tag", "平静")
+        current_score = analysis_result.get("score", 60) # ✨ 获取分数
+        
         emotion_trend = analyze_trend(session_id) 
-        print(f"📊 [Agent] 情绪: {current_emotion} | 趋势: {emotion_trend}")
+        print(f"📊 [Agent] 情绪: {current_emotion} ({current_score}分) | 趋势: {emotion_trend}")
         
         # 2. 决策
         policy = PolicyRouter.route(current_emotion, emotion_trend, user_msg)
@@ -163,17 +214,11 @@ def chat():
     # 🛡️ Step 3.5: 心理测评防御门控 (中文硬拦截版)
     # ==================================================================
     if knowledge and ("量表" in str(knowledge) or "PHQ-9" in str(knowledge) or "GAD-7" in str(knowledge)):
-        
-        # 定义负面情绪集合 (中文)
         negative_emotions = ["抑郁", "焦虑", "危机", "痛苦", "愤怒", "悲伤", "愧疚", "迷茫"]
-        # 如果当前情绪不在负面列表中 (比如是 平静)
         if current_emotion not in negative_emotions:
             print(f"🛡️ [Gate] 硬拦截触发！用户情绪 [{current_emotion}] 不需要量表，已丢弃 RAG 结果。")
             knowledge = None 
-            
             policy['instruction'] += "\n\n【注意】用户当前状态良好。请聚焦于积极心理学，讨论用户的优势和快乐源泉，不要提及任何病理性的内容。"
-
-        # 危机状态特殊处理
         elif current_emotion == "危机":
              policy['instruction'] += "\n\n【特别注意】用户处于危机状态。🚫 不要进行复杂的量表评估。✅ 直接进行危机干预。"
     # ==================================================================
@@ -182,7 +227,7 @@ def chat():
     base_prompt = prompt_engine.build(knowledge)
     final_prompt = (
         f"{base_prompt}\n\n"
-        f"### 状态感知\n- 情绪: {current_emotion}\n- 趋势: {emotion_trend}\n\n"
+        f"### 状态感知\n- 情绪: {current_emotion} (强度: {current_score}/100)\n- 趋势: {emotion_trend}\n\n"
         f"### 干预指令 ({policy['stage']})\n{policy.get('instruction', '')}"
     )
 
@@ -195,7 +240,6 @@ def chat():
     if user_msg and user_msg != '[发送了图片]' and (not history or history[-1].content != user_msg):
          messages.append({"role": "user", "content": user_msg})
 
-    # 图片路径处理
     local_image_path = None
     if image_url:
         try:
@@ -205,14 +249,16 @@ def chat():
 
     ai_reply = llm_client.chat(messages, image_path=local_image_path)
 
-    # F. 📝 存入数据库
+    # F. 📝 存入数据库 (记得存分数！)
     try:
         if image_url:
             db.session.add(ChatLog(user_id=user_id, session_id=session_id, role="user", content=image_url, emotion_tag="multimodal"))
         if user_msg and user_msg != '[发送了图片]':
             db.session.add(ChatLog(
                 user_id=user_id, session_id=session_id, role="user", 
-                content=user_msg, emotion_tag=current_emotion
+                content=user_msg, 
+                emotion_tag=current_emotion, # 存标签
+                emotion_score=current_score  # ✨✨✨ 存分数！
             ))
         db.session.add(ChatLog(
             user_id=user_id, session_id=session_id, role="assistant", 
