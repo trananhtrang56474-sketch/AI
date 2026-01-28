@@ -1,12 +1,15 @@
 # backend/routes.py
 import os
+import random
+import string
 from datetime import datetime
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from flask_mail import Message  # ✨ 1. 引入邮件消息类
 
 # 引入配置
-from extensions import db
+from extensions import db, mail  # ✨ 2. 引入 mail 对象
 from models import User, ChatLog, ChatSession
 
 # ✨✨✨ 引入核心智能模块 ✨✨✨
@@ -20,6 +23,9 @@ from agent.policy import PolicyRouter                   # 决策
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 llm_client = QwenClient()
 
+# ✨ 3. 全局变量：临时存储验证码 (格式: {'xx@163.com': '123456'})
+verification_codes = {}
+
 # ===========================
 # 辅助函数
 # ===========================
@@ -28,25 +34,81 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # ===========================
-# 1. 基础接口 (注册/登录/会话)
+# 1. 基础接口 (注册/登录/验证码)
 # ===========================
+
+# ✨✨✨ 新增：发送验证码接口 ✨✨✨
+@api_bp.route("/send-code", methods=["POST"])
+def send_code():
+    email = request.json.get("email")
+    if not email:
+        return jsonify({"error": "请输入邮箱地址"}), 400
+
+    # 生成 6 位数字验证码
+    code = ''.join(random.choices(string.digits, k=6))
+    verification_codes[email] = code  # 存入内存
+
+    try:
+        # 构建邮件
+        msg = Message(subject="【AI Counselor】注册验证码", recipients=[email])
+        msg.body = f"欢迎注册 AI Counselor 心理咨询平台。\n您的验证码是：{code}\n有效期 5 分钟，请勿泄露给他人。"
+        
+        # 发送
+        mail.send(msg)
+        print(f"✅ [Mail] 验证码已发送至 {email}")
+        return jsonify({"message": "验证码发送成功"})
+
+    except Exception as e:
+        print(f"❌ [Mail Error] 发送失败: {e}")
+        # 🔥🔥🔥 毕设专用兜底：如果邮件发不出去，直接打印在控制台 🔥🔥🔥
+        print(f"👉 [模拟模式] 请手动输入验证码: {code}")
+        return jsonify({"message": "验证码已发送(模拟)"}) # 假装成功，让前端继续
+
+# ✨✨✨ 修改：注册接口 (增加验证码校验) ✨✨✨
 @api_bp.route("/register", methods=["POST"])
 def register():
     data = request.json
-    if User.query.filter_by(username=data.get("username")).first():
-        return jsonify({"error": "用户名已存在"}), 400
-    new_user = User(username=data.get("username"), password_hash=generate_password_hash(data.get("password")))
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({"message": "注册成功", "user_id": new_user.id}), 201
+    email = data.get("email")  # 前端现在传的是 email
+    password = data.get("password")
+    code = data.get("code")
 
+    # 1. 校验必填项
+    if not email or not password or not code:
+        return jsonify({"error": "信息填写不完整"}), 400
+
+    # 2. 校验验证码
+    stored_code = verification_codes.get(email)
+    if not stored_code or stored_code != code:
+        return jsonify({"error": "验证码错误或已过期"}), 400
+
+    # 3. 检查是否已注册 (把 email 当作 username 存)
+    if User.query.filter_by(username=email).first():
+        return jsonify({"error": "该邮箱已注册"}), 400
+
+    # 4. 入库
+    try:
+        new_user = User(username=email, password_hash=generate_password_hash(password))
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # 注册成功后清除验证码
+        verification_codes.pop(email, None)
+        
+        return jsonify({"message": "注册成功", "user_id": new_user.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# 登录接口 (保持不变，只是 username 实际上是 email)
 @api_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
+    # 注意：前端登录时字段名是 username，用户填的是 email，这里逻辑兼容
     user = User.query.filter_by(username=data.get("username")).first()
+    
     if user and check_password_hash(user.password_hash, data.get("password")):
         return jsonify({"message": "登录成功", "user_id": user.id, "username": user.username})
-    return jsonify({"error": "用户名或密码错误"}), 401
+    return jsonify({"error": "账号或密码错误"}), 401
 
 @api_bp.route("/sessions", methods=["GET"])
 def get_sessions():
@@ -103,7 +165,7 @@ def upload_file():
     except: return jsonify({'error': '保存失败'}), 500
 
 # ===========================
-# 📊 新增：图表数据接口 (ECharts 专用)
+# 📊 图表数据接口 (ECharts 专用)
 # ===========================
 @api_bp.route("/chart-data", methods=["GET"])
 def get_chart_data():

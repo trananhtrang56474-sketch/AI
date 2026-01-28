@@ -38,7 +38,17 @@ const routes = [
     name: 'Login',
     component: LoginPage
   },
-
+// ✨✨✨ 加上这一段，才是完整的“注册路由” ✨✨✨
+  // 作用：当用户访问 /register 时，自动跳到 /login 并开启“注册模式”
+  {
+    path: '/register',
+    name: 'Register',
+    redirect: to => {
+      // 这里传参 mode='register'
+      // LoginPage.vue 里的 onMounted 会读取这个参数，自动切换成“邮箱注册”界面
+      return { path: '/login', query: { mode: 'register' } }
+    }
+  },
   // ---------------------------------------------------------
   // 3. 核心功能区 (受保护，需要登录)
   // 这里利用了 Vue Router 的匹配机制：
