@@ -1,6 +1,54 @@
 # Changelog
 
 本项目记录 **AI-Counselor（心理健康咨询系统）** 的全部重要迭代历程，涵盖算法、系统架构、多模态交互与伦理安全设计。
+## [2.4.0] - 2026-01-29
+### 🎨 视觉与体验重构 (UI/UX Overhaul)
+- **全站玻璃拟态系统 (Full Glassmorphism System)**:
+  - 彻底重构 UI 架构，移除所有不透明白色背景，实现**全透明玻璃 + 动态呼吸背景** (`App.vue` 全局接管)。
+  - 引入 `MainLayout` 透明化方案，解决子组件背景遮挡问题。
+- **动态呼吸背景 (Dynamic Breathing Background)**:
+  - 新增全局 CSS 动画 `gradientBG`，实现 "暖阳 -> 天蓝 -> 柔粉" 的 15s 循环呼吸效果。
+- **组件视觉升级 (Component Upgrades)**:
+  - **Sidebar**: 重构为悬浮玻璃侧边栏，选中状态支持**主色调光晕**与动态高亮。
+  - **Home**: 首页卡片全面玻璃化，图标颜色语义化（焦虑橙/平静绿），移除冗余背景层。
+  - **ChatWindow**: 聊天气泡升级，用户侧采用**主色渐变** (`Linear Gradient`)，AI 侧采用高透磨砂白。
+  - **AsidePanel**: 右侧面板实现 "实时 Live" 徽标呼吸效果，心理图表卡片增加微光质感。
+
+### 🛠️ 前端架构 (Frontend Architecture)
+- **主题变量化 (CSS Variables System)**:
+  - 在 `:root` 中定义中央调色板，统一管理 `--primary-color` (主色)、`--glass-bg` (玻璃浓度)。
+  - 新增 `--primary-rgb` 变量，支持使用 `rgba(var(--primary-rgb), 0.1)` 动态计算同色系透明度。
+  - 实现**"一键换肤"**底层架构，修改一个变量即可全站变色。
+- **路由与布局优化 (Routing & Layout)**:
+  - 移除了 `router.js` 中过时的嵌套逻辑，确立了 `App.vue` -> `MainLayout` -> `Views` 的透明层级关系。
+  - 优化了 `LoginPage.vue` 的入场动画 (`floatUp`) 与模式切换体验。
+
+### 🐛 修复 (Fixes)
+- 修复了 `MainLayout` 背景色导致全局渐变被遮挡的问题 (`background: transparent !important`)。
+- 修复了 `AsidePanel` 中情绪颜色与主题色不匹配的硬编码问题。
+- 解决了 `ChatPage` 在宽屏下背景层级 (`z-index`) 导致的点击穿透问题。
+## [2.3.0] - 2026-01-28
+### 🚀 重点功能 (Major Features)
+- **企业级邮箱认证系统 (Enterprise Email Auth)**:
+  - 重构前端认证组件 `LoginPage.vue`，支持 **“登录/注册”双模式** 无缝切换。
+  - 实现基于 **SMTP** 的验证码发送流程，集成 `60s` 倒计时与邮箱格式正则校验。
+  - 新增后端 `/api/send-code` 接口，支持验证码的生成、内存存储 (`verification_codes`) 与校验闭环。
+- **UI 视觉与交互升级 (Visual & UX Upgrade)**:
+  - 引入 **Glassmorphism (磨砂玻璃)** 设计语言，采用商务蓝紫渐变 (`#667eea` -> `#764ba2`)。
+  - 增加动态背景动画 (`Floating Orbs`) 与输入框聚焦/报错震动反馈 (`Shake Animation`)。
+  - 优化路由体验，支持通过 `/register` 路径自动重定向唤起注册模式。
+
+### ⚙️ 后端与架构 (Backend & Architecture)
+- **邮件服务集成 (Flask-Mail Integration)**:
+  - 在 `extensions.py` 与 `app.py` 完成 `Flask-Mail` 的标准化配置与初始化。
+  - 预置 **163 / 126 / QQ** 三套主流邮箱服务商配置，支持一键切换。
+  - 修复中文发件人昵称的 `ascii` 编码错误 (采用 `formataddr` 标准格式)。
+- **演示兜底机制 (Simulation Mode)**:
+  - 针对无外网或 SMTP 端口被封锁的演示环境，新增 **“模拟发送”** 逻辑。
+  - 当邮件发送失败时，自动降级为 **后端控制台打印验证码**，确保毕设答辩流程 **100% 可用**。
+### 🐛 修复 (Fixes)
+- 修复了 `router/index.js` 中因缺失 `MainLayout` 组件导致的 Vite 编译报错。
+- 修复了注册接口未校验验证码导致的安全漏洞。
 ---
 ## [2.2.0] - 2026-01-23
 ### 🚀 重点功能 (Major Features)

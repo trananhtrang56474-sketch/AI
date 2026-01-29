@@ -1,0 +1,15 @@
+# 忽略所有的 node_modules (不管在哪一层)
+**/node_modules
+
+# 忽略所有的 Python 虚拟环境
+**/venv
+**/.venv
+
+# 忽略编译产物和缓存
+**/dist
+**/__pycache__
+
+# 忽略 git 和 IDE 配置
+**/.git
+**/.vscode
+**/.idea

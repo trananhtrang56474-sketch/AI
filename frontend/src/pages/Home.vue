@@ -1,121 +1,105 @@
 <template>
-  <div class="home-dashboard">
-    <div class="welcome-banner card">
-      <div class="banner-content">
-        <h4><span role="img" aria-label="wave">👋</span> 你好，很高兴见到你</h4>
-        <p>这里是你的心灵栖息地。无论是倾诉烦恼，还是记录当下的心情，我都随时在这里陪伴你。</p>
-        <button class="primary-btn" @click="startNewChat">
-          立即开始对话
-        </button>
-      </div>
-      <div class="banner-decoration">🌱</div>
-    </div>
+  <div class="home-container">
+    <div class="content-wrapper">
+      
+      <section class="hero-section glass-card slide-in-down">
+        <div class="hero-content">
+          <div class="greeting-box">
+            <span class="weather-icon">{{ timeIcon }}</span>
+            <h1>{{ greeting }}，朋友</h1>
+          </div>
+          <p class="subtitle">这里是你的心灵栖息地。所有的情绪，都值得被看见。</p>
+          
+          <button class="primary-btn pulse-effect" @click="startNewChat">
+            <span class="btn-icon">✨</span> 开启一次心灵对话
+          </button>
+        </div>
+        <div class="hero-decoration">🌱</div>
+      </section>
 
-    <div class="main-content-grid">
-      
-      <div class="left-column">
+      <div class="main-grid">
         
-        <div class="card emotion-tracker">
-          <div class="card-header">
-            <h4><span role="img" aria-label="chart">📈</span> 心灵晴雨表 (Emotion Tracking)</h4>
-            <span class="sub-text">最近 7 次对话趋势</span>
-          </div>
+        <div class="left-column">
           
-          <div class="chart-container">
-            <EmotionChart :chart-data="emotionData" />
+          <div class="glass-card daily-quote slide-in-up">
+            <span class="quote-icon">❝</span>
+            <p class="quote-text">接纳自己的不完美，是爱自己的开始。愿你今天拥有一份平和的心情。</p>
+            <span class="quote-author">—— 每日治愈</span>
+          </div>
+
+          <div class="glass-card knowledge-hub slide-in-up" style="animation-delay: 0.1s">
+            <div class="card-header">
+              <div class="header-title">
+                <span class="icon">🧩</span>
+                <h4>心理锦囊</h4>
+              </div>
+              <button class="link-btn">查看全部</button>
+            </div>
+            <div class="topic-grid">
+              <div class="topic-pill">🧘‍♀️ 缓解焦虑</div>
+              <div class="topic-pill">🌬️ 正念呼吸</div>
+              <div class="topic-pill">🧠 认知重构</div>
+              <div class="topic-pill">🤝 人际关系</div>
+              <div class="topic-pill">💤 助眠白噪音</div>
+              <div class="topic-pill highlight">✨ 探索更多</div>
+            </div>
           </div>
         </div>
         
-        <div class="card knowledge-hub">
-          <div class="card-header">
-            <h4><span role="img" aria-label="books">📚</span> 心理知识库 (Knowledge Base)</h4>
-          </div>
-          <p class="card-desc">我们的建议基于专业的心理学理论，为你提供科学的支持。</p>
+        <div class="right-column slide-in-right">
           
-          <div class="topic-list">
-            <span class="topic-tag">🧘‍♀️ 缓解焦虑</span>
-            <span class="topic-tag">🌬️ 正念呼吸</span>
-            <span class="topic-tag">🧠 认知重构</span>
-            <span class="topic-tag">🤝 人际关系</span>
-            <span class="topic-tag">💤 睡眠改善</span>
-            <span class="topic-tag more-tag">探索更多 &rarr;</span>
+          <div class="action-list">
+            <div class="glass-card action-item" @click="startNewChat">
+              <div class="icon-box primary-icon">💬</div>
+              <div class="text">
+                <h5>深度咨询</h5>
+                <span>解决复杂烦恼</span>
+              </div>
+            </div>
+
+            <div class="glass-card action-item">
+              <div class="icon-box success-icon">🧘</div>
+              <div class="text">
+                <h5>冥想练习</h5>
+                <span>5分钟放松</span>
+              </div>
+            </div>
+
+            <div class="glass-card action-item">
+              <div class="icon-box warning-icon">📝</div>
+              <div class="text">
+                <h5>情绪日记</h5>
+                <span>记录当下心情</span>
+              </div>
+            </div>
           </div>
+
         </div>
-      </div>
-      
-      <div class="right-column">
-        
-        <div class="card quick-action primary-action" @click="startNewChat">
-          <div class="icon-wrapper">💬</div>
-          <div class="action-text">
-            <h5>开始新对话</h5>
-            <p>此时此刻，想聊点什么？</p>
-          </div>
-        </div>
-        
-        <div class="card quick-action guided-session">
-          <div class="icon-wrapper">🧘</div>
-          <div class="action-text">
-            <h5>引导式练习</h5>
-            <p>5分钟正念冥想，放松身心。</p>
-          </div>
-        </div>
-        
-        <div class="card quick-action journal">
-          <div class="icon-wrapper">✍️</div>
-          <div class="action-text">
-            <h5>情绪日志</h5>
-            <p>快速记录此刻的心情标签。</p>
-          </div>
-        </div>
-        
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-// 确保路径正确
-import EmotionChart from '@/components/EmotionChart.vue'; 
 
 const router = useRouter();
 
-// --- 数据状态 ---
-const emotionData = ref({
-  labels: [],
-  datasets: []
+const hour = new Date().getHours();
+
+const greeting = computed(() => {
+  if (hour < 6) return '夜深了';
+  if (hour < 11) return '早上好';
+  if (hour < 13) return '中午好';
+  if (hour < 18) return '下午好';
+  return '晚上好';
 });
 
-// --- 模拟从 API 获取数据 ---
-const fetchDashboardData = async () => {
-  // 模拟网络延迟
-  // await new Promise(r => setTimeout(r, 500));
-  
-  // 这里将来替换为 axios.get('/api/emotions')
-  emotionData.value = {
-    labels: ['10-12', '10-13', '10-14', '10-15', '10-16', '10-17', '10-18'],
-    datasets: [
-      {
-        label: '情绪指数',
-        data: [3, 5, 4, 6, 4, 2, 3], 
-        borderColor: '#1890ff',
-        backgroundColor: 'rgba(24, 144, 255, 0.1)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4, // 让曲线更平滑
-        pointBackgroundColor: '#fff',
-        pointBorderColor: '#1890ff',
-        pointRadius: 4
-      }
-    ]
-  };
-};
-
-// 组件加载时获取数据
-onMounted(() => {
-  fetchDashboardData();
+const timeIcon = computed(() => {
+  if (hour < 6) return '🌙';
+  if (hour < 18) return '☀️';
+  return '✨';
 });
 
 const startNewChat = () => {
@@ -124,220 +108,146 @@ const startNewChat = () => {
 </script>
 
 <style scoped>
-/* 全局容器 */
-.home-dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  max-width: 1200px; /* 限制最大宽度，在大屏上更好看 */
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* 通用卡片样式 - 增加柔和阴影 */
-.card {
-  background: #fff;
-  padding: 24px;
-  border-radius: 16px; /* 更圆润的角 */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); /* 非常淡的阴影 */
-  border: 1px solid rgba(0,0,0,0.02);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* 卡片头部通用样式 */
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.card h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.card-desc {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-.sub-text {
-  font-size: 12px;
-  color: #999;
-}
-
-/* Banner 样式优化 */
-.welcome-banner {
-  background: linear-gradient(120deg, #e6f7ff 0%, #f0fff4 100%);
+/* === 1. 全局容器 === */
+.home-container {
+  min-height: 100%;
   position: relative;
-  overflow: hidden;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.banner-content {
-  z-index: 2;
-}
-.banner-content h4 {
-  font-size: 22px;
-  color: #2c3e50;
-  margin-bottom: 8px;
-}
-.banner-content p {
-  color: #555;
-  margin-bottom: 16px;
-  max-width: 600px;
-}
-.banner-decoration {
-  font-size: 80px;
-  opacity: 0.2;
-  position: absolute;
-  right: 20px;
-  bottom: -10px;
-  user-select: none;
-  pointer-events: none;
+  /* 字体继承 App.vue 设置 */
+  overflow-x: hidden;
 }
 
-/* 按钮样式优化 */
-.primary-btn {
-  background: #1890ff;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.3);
-  transition: all 0.2s;
-}
-.primary-btn:hover {
-  background: #40a9ff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(24, 144, 255, 0.4);
-}
-.primary-btn:active {
-  transform: translateY(0);
+.content-wrapper {
+  position: relative; z-index: 1;
+  max-width: 1000px;
+  margin: 0 auto; padding: 40px 20px;
 }
 
-/* 布局网格 */
-.main-content-grid {
-  display: flex;
-  gap: 24px;
-}
-.left-column {
-  flex: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.right-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* 图表容器 */
-.chart-container {
-  height: 280px;
-  width: 100%;
-  position: relative;
-}
-
-/* 知识库标签 */
-.topic-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.topic-tag {
-  background: #f5f7fa;
-  color: #555;
-  padding: 6px 12px;
+/* === 2. 磨砂玻璃卡片通用类 (使用变量) === */
+.glass-card {
+  background: var(--glass-bg); /* ✅ 引用全局变量 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--glass-border); /* ✅ 引用全局变量 */
   border-radius: 20px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid transparent;
+  padding: 24px;
+  box-shadow: var(--glass-shadow); /* ✅ 引用全局变量 */
+  transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
 }
-.topic-tag:hover {
-  background: #e6f7ff;
-  color: #1890ff;
-  border-color: #bae7ff;
-}
-.more-tag {
-  background: transparent;
-  color: #1890ff;
-  font-weight: 500;
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.8);
 }
 
-/* 快捷入口卡片优化 */
-.quick-action {
-  cursor: pointer;
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  border: 1px solid transparent;
+/* === 3. Hero 区域 === */
+.hero-section {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 30px;
+  /* 稍微加一点白色渐变，增加层次感 */
+  background: linear-gradient(120deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
 }
-.quick-action:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border-color: #e6f7ff;
+.greeting-box { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.greeting-box h1 { margin: 0; font-size: 26px; color: var(--text-main); letter-spacing: 0.5px; }
+.weather-icon { font-size: 28px; }
+.subtitle { margin: 0 0 24px 0; color: var(--text-sub); font-size: 15px; }
+.hero-decoration { font-size: 60px; opacity: 0.8; animation: float 6s ease-in-out infinite; }
+
+/* 主按钮 (使用变量) */
+.primary-btn {
+  background: var(--primary-gradient); /* ✅ 引用全局渐变 */
+  color: white; border: none; padding: 12px 32px; border-radius: 50px;
+  font-size: 16px; font-weight: 600; cursor: pointer;
+  /* 阴影使用主色调的 RGB 变量 */
+  box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
+  display: flex; align-items: center; gap: 8px; transition: all 0.3s;
 }
-.icon-wrapper {
-  font-size: 24px;
-  background: #f5f5f5;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.action-text h5 {
-  font-size: 16px;
-  color: #333;
-  margin: 0 0 4px 0;
-  font-weight: 600;
-}
-.action-text p {
-  font-size: 13px;
-  color: #888;
-  margin: 0;
-  line-height: 1.4;
+.primary-btn:hover { 
+  transform: scale(1.05); 
+  box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4); 
 }
 
-/* 特殊颜色修饰 */
-.primary-action .icon-wrapper {
-  background: #e6f7ff;
+/* === 4. 布局 === */
+.main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+.left-column, .right-column { display: flex; flex-direction: column; gap: 24px; }
+
+/* 标题样式 */
+.header-title { display: flex; align-items: center; gap: 8px; }
+.header-title h4 { margin: 0; font-size: 17px; color: var(--text-main); }
+.link-btn { background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 13px; }
+
+/* 每日心语 */
+.daily-quote {
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.5) 100%);
+  border-left: 4px solid var(--primary-color); /* ✅ 跟随主色 */
+  padding: 24px;
 }
-.guided-session .icon-wrapper {
-  background: #f6ffed;
+.quote-icon { font-size: 28px; color: var(--primary-color); opacity: 0.5; line-height: 1; display: block; margin-bottom: 8px; }
+.quote-text { font-style: italic; color: #555; margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; }
+.quote-author { font-size: 13px; color: #999; display: block; text-align: right; }
+
+/* 知识库 Pill */
+.topic-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.topic-pill {
+  padding: 10px 18px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  font-size: 14px; color: #555; cursor: pointer; transition: 0.2s;
 }
-.journal .icon-wrapper {
-  background: #fffbe6;
+.topic-pill:hover { 
+  background: #fff; 
+  color: var(--primary-color); /* ✅ 跟随主色 */
+  border-color: var(--primary-color);
+  transform: translateY(-2px); 
+}
+.topic-pill.highlight { 
+  background: rgba(var(--primary-rgb), 0.05); /* ✅ 淡淡的主色背景 */
+  color: var(--primary-color); 
+  font-weight: 500; 
 }
 
-/* 📱 移动端适配 (重点优化) */
+/* 功能列表 */
+.action-list { display: flex; flex-direction: column; gap: 16px; }
+.action-item {
+  display: flex; align-items: center; gap: 16px; padding: 20px; cursor: pointer;
+  background: rgba(255,255,255,0.7);
+}
+.icon-box {
+  width: 46px; height: 46px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+
+/* ✨ 优化：使用语义化变量 */
+.primary-icon { 
+  background: rgba(var(--primary-rgb), 0.1); 
+  color: var(--primary-color); 
+}
+.success-icon { 
+  background: rgba(82, 196, 26, 0.1); /* 也可以定义 --success-rgb */
+  color: var(--success-color); 
+}
+.warning-icon { 
+  background: rgba(250, 140, 22, 0.1); 
+  color: var(--warning-color); 
+}
+
+.text h5 { margin: 0 0 4px 0; font-size: 16px; color: var(--text-main); }
+.text span { font-size: 13px; color: var(--text-sub); }
+
+/* 动画 */
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.slide-in-down { animation: slideDown 0.6s ease-out; }
+.slide-in-up { animation: slideUp 0.6s ease-out backwards; }
+.slide-in-right { animation: slideLeft 0.6s ease-out backwards; }
+
+@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideLeft { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* 手机适配 */
 @media (max-width: 768px) {
-  .main-content-grid {
-    flex-direction: column; /* 手机上改为单列 */
-  }
-  
-  .left-column, .right-column {
-    flex: auto; /* 宽度自动填满 */
-    width: 100%;
-  }
-
-  .banner-decoration {
-    display: none; /* 手机上隐藏背景装饰，防止遮挡 */
-  }
+  .main-grid { grid-template-columns: 1fr; }
+  .hero-section { flex-direction: column; text-align: center; }
+  .greeting-box { justify-content: center; }
+  .hero-decoration { display: none; }
 }
 </style>

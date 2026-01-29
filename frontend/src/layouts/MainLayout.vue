@@ -1,6 +1,6 @@
 <template>
   <div class="main-layout">
-    <aside class="layout-sidebar">
+    <aside class="layout-sidebar glass-panel-left">
       <Sidebar />
     </aside>
 
@@ -12,7 +12,7 @@
       </router-view>
     </main>
 
-    <aside class="layout-aside">
+    <aside class="layout-aside glass-panel-right">
       <AsidePanel />
     </aside>
   </div>
@@ -24,62 +24,76 @@ import AsidePanel from '@/components/AsidePanel.vue';
 </script>
 
 <style scoped>
+/* === 1. 布局容器 === */
 .main-layout {
   display: flex;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #f4f7f9;
+  /* ✨ 核心：透明背景，让 App.vue 的渐变透出来 */
+  background-color: transparent; 
 }
 
-/* 🔥 关键修改：取消固定宽度，让它随子组件 Sidebar 自动伸缩 */
+/* === 2. 左侧侧边栏 (玻璃特效) === */
 .layout-sidebar {
-  flex: 0 0 auto; /* 宽度由内容决定 */
+  flex: 0 0 auto;
   width: auto;
-  background-color: #ffffff;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.03);
   z-index: 10;
   display: flex;
   flex-direction: column;
-  /* 加上过渡动画，配合 Sidebar 的收缩 */
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
 }
 
+.glass-panel-left {
+  /* ✨ 优化：使用全局变量，方便统一调整透明度 */
+  background: var(--glass-bg); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.02);
+}
+
+/* === 3. 中间内容区 === */
 .layout-content {
-  flex: 1; /* 自动占满剩余空间 */
-  padding: 24px 32px;
+  flex: 1;
+  padding: 0; /* 全屏布局 */
   overflow-y: auto;
   position: relative;
-  /* 让右侧内容的挤压也带有平滑动画 */
   transition: all 0.3s ease;
+  scrollbar-width: none; 
+}
+.layout-content::-webkit-scrollbar {
+  display: none;
 }
 
+/* === 4. 右侧辅助栏 (玻璃特效) === */
 .layout-aside {
   flex: 0 0 280px;
-  background-color: #ffffff;
-  padding: 24px;
-  border-left: 1px solid #f0f0f0;
-  overflow-y: auto;
   z-index: 5;
+  padding: 24px;
+  overflow-y: auto;
 }
 
-/* --- 📱 响应式适配 --- */
+.glass-panel-right {
+  /* ✨ 优化：右侧稍微淡一点，突出中间内容 */
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.02);
+}
+
+/* === 5. 响应式适配 === */
 @media (max-width: 1200px) {
   .layout-aside { display: none; }
 }
 
 @media (max-width: 768px) {
   .layout-sidebar { display: none; }
-  .layout-content { padding: 16px; }
+  .layout-content { width: 100%; }
 }
 
-/* 滚动条美化 */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #c0c4cc; }
-
 /* 页面切换动画 */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

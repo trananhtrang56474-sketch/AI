@@ -1,0 +1,10 @@
+Flask
+Flask-Cors
+Flask-SQLAlchemy
+Flask-Mail
+Werkzeug
+requests
+dashscope
+chromadb
+sentence-transformers
+python-dotenv

@@ -1,34 +1,40 @@
 <template>
   <div class="chat-pure-container">
-    
-    <header class="chat-header">
+    <header class="chat-header glass-header">
       <div class="header-info">
         <h3>{{ headerTitle }}</h3>
-        <span class="status-badge">在线</span>
+        <div class="status-box">
+          <span class="status-dot"></span>
+          <span class="status-text">AI 在线</span>
+        </div>
       </div>
     </header>
 
-    <div v-if="route.query.session_id" class="dashboard-section">
-      
-      <div class="dashboard-header" @click="isChartVisible = !isChartVisible">
-        <div class="header-left">
-          <span>📈 心灵轨迹</span>
-          <transition name="fade">
-            <span v-show="isChartVisible" class="sub-title">实时监测对话情绪波动</span>
-          </transition>
-        </div>
+    <div v-if="route.query.session_id" class="dashboard-wrapper">
+      <div class="dashboard-card glass-card" :class="{ 'is-collapsed': !isChartVisible }">
         
-        <div class="toggle-btn" :class="{ 'rotated': !isChartVisible }">
-          ▼
+        <div class="dashboard-header" @click="isChartVisible = !isChartVisible">
+          <div class="header-left">
+            <span class="icon">📈</span>
+            <span class="title">心情气象站</span>
+            <transition name="fade">
+              <span v-show="isChartVisible" class="sub-title"> · 实时情绪波动监测</span>
+            </transition>
+          </div>
+          
+          <div class="toggle-btn" :class="{ 'rotated': !isChartVisible }">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </div>
+
+        <div class="chart-content-area">
+          <div class="chart-inner-box">
+            <EmotionChart :chart-data="chartData" />
+          </div>
         </div>
       </div>
-
-      <div class="chart-collapse-wrapper" :class="{ 'collapsed': !isChartVisible }">
-        <div class="chart-box">
-          <EmotionChart :chart-data="chartData" />
-        </div>
-      </div>
-
     </div>
 
     <div class="chat-window-wrapper">
@@ -38,10 +44,12 @@
       />
     </div>
 
-    <MessageInput 
-      :is-loading="isLoading || isTyping" 
-      @send-composite="handleCompositeSend" 
-    />
+    <div class="input-area-wrapper glass-footer">
+      <MessageInput 
+        :is-loading="isLoading || isTyping" 
+        @send-composite="handleCompositeSend" 
+      />
+    </div>
   </div>
 </template>
 
@@ -67,7 +75,7 @@ const chartData = ref({ dates: [], scores: [] });
 // 默认展开图表
 const isChartVisible = ref(true);
 
-const headerTitle = computed(() => route.query.session_id ? '正在对话' : '新对话');
+const headerTitle = computed(() => route.query.session_id ? 'AI 心理咨询师' : '新对话');
 
 // 获取图表数据
 const fetchChartData = async (sessionId) => {
@@ -175,70 +183,122 @@ const handleCompositeSend = async ({ text, file }) => {
 </script>
 
 <style scoped>
+/* === 1. 全局容器与背景 === */
 .chat-pure-container {
   height: 100%; 
   display: flex; 
   flex-direction: column; 
-  background: #fff; 
   position: relative;
   overflow: hidden; 
+  /* ✨ 关键：背景透明，让 App.vue 的渐变透进来 */
+  background: transparent;
 }
 
+/* === 2. 头部样式 === */
 .chat-header {
   padding: 16px 24px; 
-  border-bottom: 1px solid #f0f0f0; 
   display: flex; align-items: center; flex-shrink: 0;
+  position: relative;
 }
 
-/* 仪表盘 */
-.dashboard-section {
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
-  flex-shrink: 0;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+.glass-header {
+  background: var(--glass-bg); /* ✅ 使用全局变量 */
+  backdrop-filter: blur(12px);
+  border-bottom: var(--glass-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
   z-index: 10;
 }
 
-.dashboard-header {
-  padding: 12px 24px;
-  display: flex; justify-content: space-between; align-items: center;
-  cursor: pointer; user-select: none;
-  transition: background-color 0.2s;
+.header-info h3 { 
+  margin: 0; font-size: 18px; font-weight: 600; 
+  color: var(--text-main); /* ✅ 使用全局变量 */
+  letter-spacing: 0.5px;
 }
-.dashboard-header:hover { background-color: #f9fafb; }
 
-.header-left {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 14px; font-weight: 600; color: #333;
+.status-box {
+  display: flex; align-items: center; margin-left: 12px;
+  background: rgba(82, 196, 26, 0.1); /* 也可以定义 --success-rgb */
+  padding: 4px 10px; border-radius: 20px;
 }
-.sub-title { font-size: 12px; color: #999; font-weight: normal; }
-.toggle-btn { font-size: 12px; color: #999; transition: transform 0.3s ease; }
-.toggle-btn.rotated { transform: rotate(-90deg); }
+.status-dot {
+  width: 8px; height: 8px; 
+  background: var(--success-color); /* ✅ 使用全局变量 */
+  border-radius: 50%; margin-right: 6px;
+  box-shadow: 0 0 8px rgba(82, 196, 26, 0.4);
+}
+.status-text { 
+  font-size: 12px; 
+  color: var(--success-color); /* ✅ 使用全局变量 */
+  font-weight: 500; 
+}
 
-/* ✨✨✨ 高度修复重点 ✨✨✨ */
-.chart-collapse-wrapper {
-  max-height: 250px; /* 🔥 调大一点，容纳 180px 的图表 */
-  opacity: 1;
+/* === 3. 仪表盘 (悬浮玻璃卡片) === */
+.dashboard-wrapper {
+  padding: 12px 16px 0 16px; 
+  position: relative; z-index: 9; flex-shrink: 0;
+}
+
+.dashboard-card {
+  border-radius: 16px; 
+  border: var(--glass-border); /* ✅ 使用全局变量 */
   overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-}
-.chart-collapse-wrapper.collapsed { max-height: 0; opacity: 0; }
-
-.chart-box {
-  height: 180px; /* 🔥 调高高度，给图表足够空间 */
-  width: 100%;
-  padding: 0 24px 12px 24px; 
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.header-info h3 { margin: 0; font-size: 16px; color: #333; display: inline-block; }
-.status-badge { 
-  font-size: 12px; color: #52c41a; background: #f6ffed; padding: 2px 8px; 
-  border-radius: 10px; margin-left: 8px; border: 1px solid #b7eb8f; 
+.glass-card {
+  background: var(--glass-bg); /* ✅ 使用全局变量 */
+  backdrop-filter: blur(12px);
+  box-shadow: var(--glass-shadow);
 }
 
+.dashboard-header {
+  padding: 14px 20px;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; transition: background 0.2s;
+}
+.dashboard-header:hover { background: rgba(255, 255, 255, 0.4); }
+
+.header-left { display: flex; align-items: center; gap: 8px; }
+.title { font-size: 14px; font-weight: 600; color: var(--text-main); }
+.sub-title { font-size: 12px; color: var(--text-sub); font-weight: 400; }
+
+.toggle-btn { 
+  color: var(--text-sub); 
+  transition: transform 0.4s ease; 
+  display: flex; align-items: center;
+}
+.toggle-btn.rotated { transform: rotate(-180deg); }
+
+/* 折叠动画区域 */
+.chart-content-area {
+  max-height: 250px; opacity: 1;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.is-collapsed .chart-content-area { max-height: 0; opacity: 0; }
+.is-collapsed { box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+.chart-inner-box { height: 200px; width: 100%; padding: 0 10px 10px 10px; }
+
+/* === 4. 主聊天区域 === */
 .chat-window-wrapper {
   flex: 1; overflow: hidden; display: flex; flex-direction: column;
+  position: relative; z-index: 1; 
+  /* 背景透明，让光透进来 */
+  background: transparent; 
 }
+
+/* === 5. 输入框区域 === */
+.input-area-wrapper {
+  position: relative; z-index: 10;
+}
+
+.glass-footer {
+  background: var(--glass-bg); /* ✅ 使用全局变量 */
+  backdrop-filter: blur(10px);
+  border-top: var(--glass-border);
+}
+
+/* Vue 动画 */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

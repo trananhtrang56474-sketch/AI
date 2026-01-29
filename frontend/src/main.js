@@ -1,10 +1,12 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import router from './router'; // 引入路由
+import router from './router';
 
-import './assets/main.css';
-import './assets/styles.css';
+// 🛑 注释掉旧的样式文件，防止它们覆盖我们的新设计
+// import './assets/main.css';
+// import './assets/styles.css';
 
-createApp(App)
-  .use(router)  // 必须挂载路由
-  .mount('#app');
+const app = createApp(App);
+
+app.use(router);
+app.mount('#app');

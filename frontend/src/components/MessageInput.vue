@@ -1,14 +1,22 @@
 <template>
-  <div class="input-area">
+  <div class="input-area-container">
     
-    <div v-if="previewUrl" class="image-preview-bar">
-      <div class="preview-item">
-        <img :src="previewUrl" alt="预览图" />
-        <button class="remove-btn" @click="clearImage" title="移除图片">×</button>
+    <transition name="slide-up">
+      <div v-if="previewUrl" class="image-preview-bar">
+        <div class="preview-item">
+          <img :src="previewUrl" alt="预览图" />
+          <button class="remove-btn" @click="clearImage" title="移除图片">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
+    </transition>
 
-    <div class="input-container">
+    <div class="input-capsule-wrapper">
+      
       <input 
         type="file" 
         ref="fileInput"
@@ -21,34 +29,41 @@
         class="tool-btn" 
         @click="$refs.fileInput.click()" 
         :disabled="isLoading"
-        title="选择图片"
+        title="上传图片"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-          <circle cx="12" cy="13" r="4"></circle>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
         </svg>
       </button>
 
       <textarea
         v-model="inputValue"
-        placeholder="输入你的想法... (Shift + Enter 换行)"
+        placeholder="输入你的想法..."
         @keydown.enter.exact.prevent="handleSend"
         :disabled="isLoading"
         rows="1"
         ref="textareaRef"
         @input="autoResize"
+        class="custom-textarea"
       ></textarea>
       
       <button 
         class="send-btn" 
         @click="handleSend" 
         :disabled="(!inputValue.trim() && !selectedFile) || isLoading"
+        :class="{ 'is-loading': isLoading }"
       >
-        <span v-if="isLoading" class="spinner"></span>
-        <span v-else>发送</span>
+        <div v-if="isLoading" class="spinner"></div>
+        <svg v-else class="send-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
       </button>
     </div>
-    <div class="footer-tip">AI 生成内容仅供参考，不代表专业医疗建议。</div>
+
+    <div class="footer-tip">AI 内容仅供参考，不代表专业医疗建议</div>
   </div>
 </template>
 
@@ -59,175 +74,96 @@ const props = defineProps({
   isLoading: Boolean
 });
 
-// 🔥 定义向父组件发送的组合事件
 const emit = defineEmits(['send-composite']);
 
 const inputValue = ref('');
 const textareaRef = ref(null);
 const fileInput = ref(null);
-const selectedFile = ref(null); // 存储实际的文件对象
-const previewUrl = ref(null);   // 存储本地预览 URL
+const selectedFile = ref(null);
+const previewUrl = ref(null);
 
-// 1. 处理文件选择
 const handleFileSelect = (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
   selectedFile.value = file;
-  // 创建本地 URL 用于预览
   previewUrl.value = URL.createObjectURL(file);
-  
-  // 重置 input 值，防止无法重复选同一张图
   event.target.value = '';
 };
 
-// 2. 清除选中的图片
 const clearImage = () => {
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value); // 释放内存
-  }
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
   selectedFile.value = null;
   previewUrl.value = null;
 };
 
-// 3. 自动调整文本框高度
 const autoResize = () => {
   const el = textareaRef.value;
   if (el) {
     el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'; // 限制最大高度
   }
 };
 
-// 4. 处理发送逻辑
 const handleSend = () => {
   if (props.isLoading) return;
   const text = inputValue.value.trim();
-  
-  // 如果既没字也没图，不发送
   if (!text && !selectedFile.value) return;
 
-  // 触发父组件事件，传递对象 { text, file }
-  emit('send-composite', {
-    text: text,
-    file: selectedFile.value
-  });
+  emit('send-composite', { text: text, file: selectedFile.value });
 
-  // 发送后重置状态
   inputValue.value = '';
   clearImage();
-  
-  // 重置文本框高度
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto';
-  }
+  if (textareaRef.value) textareaRef.value.style.height = 'auto';
 };
 </script>
 
 <style scoped>
-.input-area {
-  background: #fff;
-  padding: 20px;
-  border-top: 1px solid #f0f0f0;
+/* === 1. 外部容器 === */
+.input-area-container {
+  /* 背景透明，依靠 ChatPage 的渐变 */
+  background: transparent; 
+  padding: 10px 24px 24px 24px;
   display: flex;
-  flex-direction: column; /* 垂直排列，为了放置图片预览栏 */
-  gap: 10px;
-}
-
-/* 🖼️ 图片预览区样式 */
-.image-preview-bar {
-  padding: 0 4px;
-  animation: fadeIn 0.2s ease-out;
-}
-.preview-item {
+  flex-direction: column;
+  gap: 12px;
   position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  background: #fafafa;
-}
-.preview-item img {
-  width: 100%; 
-  height: 100%; 
-  object-fit: cover; 
-  border-radius: 8px;
-}
-.remove-btn {
-  position: absolute;
-  top: -8px; 
-  right: -8px;
-  background: #ff4d4f; 
-  color: white;
-  border: none; 
-  border-radius: 50%;
-  width: 18px; 
-  height: 18px;
-  font-size: 14px; 
-  line-height: 1;
-  cursor: pointer;
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  transition: transform 0.2s;
-}
-.remove-btn:hover {
-  transform: scale(1.1);
-  background: #ff7875;
 }
 
-.input-container {
+/* === 2. 核心胶囊外壳 === */
+.input-capsule-wrapper {
   display: flex;
-  gap: 8px;
   align-items: flex-end;
-  background: #f5f7fa;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-}
-
-.input-container:focus-within {
+  gap: 8px;
   background: #fff;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  padding: 8px;
+  border-radius: 26px; /* 大圆角胶囊 */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); /* 悬浮阴影 */
+  border: 1px solid rgba(0,0,0,0.02);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* 📷 工具按钮样式 */
+/* 聚焦时的高亮效果 */
+.input-capsule-wrapper:focus-within {
+  box-shadow: 0 8px 30px rgba(118, 75, 162, 0.15); /* 紫色微光 */
+  transform: translateY(-2px);
+}
+
+/* === 3. 工具按钮 === */
 .tool-btn {
   background: transparent;
   border: none;
-  color: #8c8c8c;
+  color: #a0aec0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  padding: 6px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: all 0.2s;
-  height: 36px;
-  width: 36px;
   flex-shrink: 0;
 }
+.tool-btn:hover { background: #f7fafc; color: #764ba2; }
 
-.tool-btn:hover:not(:disabled) {
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.1);
-}
-
-.tool-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.tool-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-textarea {
+/* === 4. 输入框 === */
+.custom-textarea {
   flex: 1;
   background: transparent;
   border: none;
@@ -235,51 +171,94 @@ textarea {
   resize: none;
   font-size: 15px;
   line-height: 1.5;
-  color: #333;
+  color: #2d3748;
   max-height: 120px;
-  padding: 6px 4px;
+  padding: 10px 4px;
+  font-family: inherit;
 }
+.custom-textarea::placeholder { color: #cbd5e0; }
 
+/* === 5. 发送按钮 (纸飞机) === */
 .send-btn {
-  background: #1890ff;
+  /* 渐变背景 */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 0 20px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: 50%; /* 圆形按钮 */
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性过渡 */
+  box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+  flex-shrink: 0;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #40a9ff;
+  transform: scale(1.05) rotate(-10deg); /* 悬停微动 */
+  box-shadow: 0 6px 16px rgba(118, 75, 162, 0.4);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .send-btn:disabled {
-  background: #ccc;
+  background: #e2e8f0;
+  color: #a0aec0;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
+.send-icon { margin-left: -2px; margin-top: 2px; /* 微调图标位置 */ }
+
+/* === 6. 图片预览气泡 === */
+.image-preview-bar {
+  padding-left: 12px;
+}
+.preview-item {
+  position: relative;
+  display: inline-block;
+  width: 70px; height: 70px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 2px solid #fff;
+}
+.preview-item img { width: 100%; height: 100%; object-fit: cover; }
+
+.remove-btn {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(0,0,0,0.6); color: white;
+  border: none; border-radius: 50%;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: 0.2s;
+}
+.remove-btn:hover { background: #e53e3e; }
+
+/* === 7. 底部提示 === */
 .footer-tip {
   text-align: center;
-  font-size: 12px;
-  color: #bbb;
-  margin-top: 0;
+  font-size: 11px;
+  color: #a0aec0;
+  margin-top: -4px;
 }
 
+/* === 8. 动画 === */
 .spinner {
-  width: 14px; height: 14px;
+  width: 18px; height: 18px;
   border: 2px solid rgba(255,255,255,0.3);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.slide-up-enter-active, .slide-up-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.slide-up-enter-from, .slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+}
 </style>

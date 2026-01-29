@@ -1,11 +1,13 @@
 <template>
-  <nav class="sidebar-nav" :class="{ collapsed: isCollapsed }">
+  <nav class="sidebar-nav glass-sidebar" :class="{ collapsed: isCollapsed }">
     
     <div class="sidebar-header">
-      <div v-show="!isCollapsed" class="logo-box">
-        <span class="logo-emoji">🧠</span>
-        <h3 class="logo-text">AI 心灵伴侣</h3>
-      </div>
+      <transition name="fade">
+        <div v-show="!isCollapsed" class="logo-box">
+          <span class="logo-emoji">🧠</span>
+          <h3 class="logo-text">AI 心灵伴侣</h3>
+        </div>
+      </transition>
       
       <div v-show="isCollapsed" class="logo-box-mini">
         <span class="logo-emoji">🧠</span>
@@ -13,14 +15,23 @@
 
       <button class="toggle-btn" @click="toggleSidebar" :title="isCollapsed ? '展开菜单' : '收起菜单'">
         <svg v-if="!isCollapsed" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
         <svg v-else class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 12h5v7L18 10h-5z" /> </svg>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
       </button>
     </div>
 
     <div class="nav-content">
+      
+      <div class="action-area">
+        <button class="new-chat-btn pulse-hover" @click="handleNewChat" :class="{ 'collapsed-btn': isCollapsed }" :title="isCollapsed ? '新对话' : ''">
+          <span class="plus-icon">✨</span>
+          <span v-if="!isCollapsed" class="btn-text">开启新对话</span>
+        </button>
+      </div>
+
       <div 
         class="nav-item" 
         @click="$router.push('/home')" 
@@ -29,47 +40,52 @@
       >
         <div class="icon-wrapper">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
         </div>
-        <span class="nav-text">仪表盘</span>
+        <transition name="fade">
+          <span v-show="!isCollapsed" class="nav-text">仪表盘</span>
+        </transition>
       </div>
       
-      <div class="action-area">
-        <button class="new-chat-btn" @click="handleNewChat" :title="isCollapsed ? '新对话' : ''">
-          <span class="plus-icon">+</span>
-          <span class="btn-text">开始新对话</span>
-        </button>
-      </div>
-
-      <div class="history-group" v-show="!isCollapsed">
-        <div class="group-title" @click="isHistoryOpen = !isHistoryOpen">
+      <div class="history-group">
+        <div v-show="!isCollapsed" class="group-title" @click="isHistoryOpen = !isHistoryOpen">
           <span>🕒 历史对话</span>
           <svg class="arrow" :class="{ rotated: isHistoryOpen }" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
           </svg>
         </div>
         
-        <div v-show="isHistoryOpen" class="history-list">
-          <div v-if="sessions.length === 0" class="empty-tip">暂无记录</div>
-          
-          <div 
-            v-for="item in sessions" 
-            :key="item.id" 
-            class="history-item"
-            :class="{ active: currentSessionId == item.id }"
-            @click="handleSelectSession(item.id)"
-          >
-            <span class="dot"></span>
-            <span class="title">{{ item.title }}</span>
+        <div v-show="isCollapsed" class="divider"></div>
+
+        <transition name="slide-fade">
+          <div v-show="isHistoryOpen || isCollapsed" class="history-list">
+            <div v-if="sessions.length === 0 && !isCollapsed" class="empty-tip">暂无记录</div>
+            
+            <div 
+              v-for="item in sessions" 
+              :key="item.id" 
+              class="history-item"
+              :class="{ active: currentSessionId == item.id }"
+              @click="handleSelectSession(item.id)"
+              :title="item.title"
+            >
+              <span class="session-icon">💬</span>
+              <span v-show="!isCollapsed" class="title">{{ item.title || '未命名对话' }}</span>
+            </div>
           </div>
-        </div>
+        </transition>
       </div>
     </div>
 
     <div class="sidebar-footer" @click="handleLogout" title="退出登录">
-      <span class="logout-icon">🚪</span>
-      <span class="logout-text">退出登录</span>
+      <div class="footer-btn">
+        <span class="logout-icon">🚪</span>
+        <span v-show="!isCollapsed" class="logout-text">退出登录</span>
+      </div>
     </div>
   </nav>
 </template>
@@ -78,7 +94,7 @@
 import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router';
-import { bus } from '../eventBus';
+import { bus } from '../eventBus'; 
 
 const router = useRouter();
 const route = useRoute();
@@ -86,14 +102,10 @@ const route = useRoute();
 const sessions = ref([]);
 const isHistoryOpen = ref(true);
 const currentSessionId = ref(null);
-
-// 🔥 新增：控制侧边栏折叠状态
 const isCollapsed = ref(false);
-const toggleSidebar = () => {
-  isCollapsed.value = !isCollapsed.value;
-};
 
-// ... 原有的逻辑保持不变 ...
+const toggleSidebar = () => { isCollapsed.value = !isCollapsed.value; };
+
 const loadSessions = async () => {
   const userId = localStorage.getItem('user_id');
   if (!userId) return;
@@ -127,140 +139,148 @@ onMounted(() => loadSessions());
 </script>
 
 <style scoped>
-/* 基础容器 */
-.sidebar-nav {
-  width: 240px; /* 默认宽度 */
+/* === 1. 玻璃态容器 === */
+.glass-sidebar {
+  width: 260px;
   height: 100%;
-  background: #fff;
-  border-right: 1px solid #eef0f5;
+  background: transparent; 
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.5, 1); /* 丝滑动画 */
-  overflow: hidden; /* 隐藏溢出内容 */
+  padding: 20px 16px;
+  transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+  color: var(--text-main); /* ✅ 使用全局文字色 */
 }
 
-/* --- 1. 顶部 Header --- */
+/* === 2. Header === */
 .sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  height: 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px; min-height: 40px;
 }
-
-.logo-box {
-  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+.logo-box { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.logo-text { 
+  margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;
+  color: var(--primary-color); /* ✅ 使用全局主色 */
 }
-.logo-text { margin: 0; font-size: 18px; color: #1890ff; font-weight: 700; }
-.logo-emoji { font-size: 24px; }
-.logo-box-mini { font-size: 24px; margin-right: auto; }
+.logo-emoji { font-size: 22px; }
+.logo-box-mini { margin: 0 auto; font-size: 24px; }
 
-/* 切换按钮样式 */
+/* 切换按钮 */
 .toggle-btn {
   width: 32px; height: 32px;
-  border: none; background: #f5f7fa; color: #64748b;
-  border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border: none; background: rgba(255,255,255,0.5); 
+  border-radius: 50%; color: #64748b;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
-.toggle-btn:hover { background: #e6f7ff; color: #1890ff; }
-.toggle-btn .icon { width: 18px; height: 18px; }
-
-/* --- 2. 导航内容 --- */
-.nav-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
-
-/* 通用导航项 */
-.nav-item {
-  display: flex; align-items: center; padding: 12px;
-  color: #555; border-radius: 10px; cursor: pointer; transition: 0.2s; margin-bottom: 5px;
-  white-space: nowrap; /* 防止文字换行 */
+.toggle-btn:hover { 
+  background: #fff; 
+  color: var(--primary-color); /* ✅ 悬停变主色 */
+  transform: scale(1.1); 
 }
-.nav-item:hover { background: #f5f7fa; color: #333; }
-.nav-item.active { background: #e6f7ff; color: #1890ff; font-weight: 600; }
+.toggle-btn .icon { width: 16px; height: 16px; }
 
-.icon-wrapper { width: 24px; display: flex; justify-content: center; }
-.nav-icon { width: 20px; height: 20px; }
-.nav-text { margin-left: 12px; transition: opacity 0.2s; }
+/* === 3. 导航内容 === */
+.nav-content { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 8px; }
 
 /* 新建按钮 */
-.action-area { margin: 15px 0 20px 0; }
+.action-area { margin-bottom: 16px; }
 .new-chat-btn {
-  width: 100%; padding: 12px; background: #1890ff; color: white; border: none; border-radius: 8px;
+  width: 100%; padding: 12px; 
+  background: var(--primary-gradient); /* ✅ 使用全局渐变 */
+  color: white; border: none; border-radius: 12px;
   cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: 0.2s; white-space: nowrap; overflow: hidden;
+  transition: all 0.3s; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3); /* ✅ 阴影跟随主色 */
 }
-.new-chat-btn:hover { background: #40a9ff; }
-.plus-icon { font-size: 18px; line-height: 1; }
+.new-chat-btn:hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.4); 
+}
+.new-chat-btn.collapsed-btn { width: 44px; height: 44px; padding: 0; border-radius: 50%; margin: 0 auto; }
 
-/* 历史列表 (收起时会被 v-show 隐藏) */
-.history-group { margin-top: 10px; }
-.group-title {
-  display: flex; justify-content: space-between; align-items: center; padding: 8px 5px;
-  color: #999; font-size: 13px; cursor: pointer; white-space: nowrap;
-}
-.arrow { width: 16px; transition: transform 0.3s; }
-.arrow.rotated { transform: rotate(180deg); }
-.history-item {
-  padding: 10px 12px; font-size: 14px; color: #666; cursor: pointer; border-radius: 6px;
-  display: flex; align-items: center; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.history-item:hover { background: #fafafa; }
-.history-item.active { background: #f0f9ff; color: #1890ff; }
-.dot { width: 6px; height: 6px; background: #ddd; border-radius: 50%; flex-shrink: 0; }
-.history-item.active .dot { background: #1890ff; }
-.empty-tip { font-size: 12px; color: #ccc; text-align: center; margin-top: 10px; }
-
-/* --- 3. 底部 --- */
-.sidebar-footer {
-  margin-top: auto; padding-top: 15px; border-top: 1px solid #f0f0f0;
-  text-align: center; color: #999; cursor: pointer; font-size: 14px;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+/* 导航项 */
+.nav-item {
+  display: flex; align-items: center; padding: 10px 12px;
+  color: #555; border-radius: 12px; cursor: pointer; transition: 0.2s;
   white-space: nowrap;
 }
-.sidebar-footer:hover { color: #ff4d4f; }
+.nav-item:hover { 
+  background: rgba(255,255,255,0.5); 
+  color: var(--primary-color); /* ✅ 悬停变主色 */
+}
+.nav-item.active { 
+  background: rgba(255,255,255,0.8); 
+  color: var(--primary-color); /* ✅ 激活变主色 */
+  font-weight: 600; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.icon-wrapper { width: 24px; display: flex; justify-content: center; margin-right: 12px; }
+.nav-icon { width: 20px; height: 20px; }
 
-/* =========================================
-   🔥 折叠状态 (.collapsed) 的样式覆写
-   ========================================= */
-.sidebar-nav.collapsed {
-  width: 72px; /* 收起后的宽度 */
-  padding: 16px 12px; /* 调整内边距 */
+/* 历史列表 */
+.history-group { margin-top: 12px; flex: 1; display: flex; flex-direction: column; }
+.group-title {
+  display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;
+  color: #999; font-size: 12px; cursor: pointer; white-space: nowrap; font-weight: 600;
+}
+.arrow { width: 14px; transition: transform 0.3s; }
+.arrow.rotated { transform: rotate(180deg); }
+
+.history-list { overflow-y: auto; padding-right: 4px; }
+.history-item {
+  padding: 10px 12px; font-size: 14px; color: #666; cursor: pointer; border-radius: 10px;
+  display: flex; align-items: center; gap: 10px; white-space: nowrap; overflow: hidden; margin-bottom: 2px;
+  transition: all 0.2s;
+}
+.history-item:hover { background: rgba(255,255,255,0.4); transform: translateX(2px); }
+.history-item.active { 
+  background: rgba(var(--primary-rgb), 0.1); /* ✅ 激活背景变淡主色 */
+  color: var(--primary-color); 
+  font-weight: 500;
+  border-left: 3px solid var(--primary-color); /* ✅ 左侧条 */
+}
+.session-icon { font-size: 16px; opacity: 0.7; }
+.empty-tip { font-size: 12px; color: #ccc; text-align: center; margin-top: 20px; }
+.divider { height: 1px; background: rgba(0,0,0,0.05); margin: 8px 0; }
+
+/* === 4. Footer === */
+.sidebar-footer { margin-top: auto; padding-top: 16px; }
+.footer-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px; border-radius: 10px; color: #888; cursor: pointer;
+  transition: 0.2s; white-space: nowrap;
+}
+.footer-btn:hover { 
+  background: rgba(255, 77, 79, 0.1); 
+  color: var(--danger-color); /* ✅ 使用危险色变量 */
 }
 
-/* 隐藏文字 */
-.sidebar-nav.collapsed .logo-text,
-.sidebar-nav.collapsed .nav-text,
-.sidebar-nav.collapsed .btn-text,
-.sidebar-nav.collapsed .logout-text {
-  display: none;
-  opacity: 0;
+/* === 5. 折叠适配 === */
+.sidebar-nav.collapsed { width: 80px; padding: 20px 10px; }
+.sidebar-nav.collapsed .nav-item { justify-content: center; padding: 12px 0; }
+.sidebar-nav.collapsed .icon-wrapper { margin: 0; }
+.sidebar-nav.collapsed .history-item { justify-content: center; padding: 12px 0; border-left: none; }
+.sidebar-nav.collapsed .history-item.active { 
+  background: rgba(var(--primary-rgb), 0.2); /* ✅ 折叠时背景稍微深一点 */
+  border-radius: 12px; 
+}
+.sidebar-nav.collapsed .sidebar-header { justify-content: center; }
+.sidebar-nav.collapsed .toggle-btn { margin: 0 auto; }
+
+/* 动画 */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.pulse-hover:hover { animation: pulse 1s infinite; }
+@keyframes pulse { 
+  0% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4); } 
+  70% { box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0); } 
+  100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); } 
 }
 
-/* 调整布局居中 */
-.sidebar-nav.collapsed .nav-item {
-  justify-content: center;
-  padding: 12px 0;
-}
-.sidebar-nav.collapsed .icon-wrapper {
-  margin: 0;
-}
-.sidebar-nav.collapsed .new-chat-btn {
-  padding: 10px;
-  border-radius: 50%; /* 变成圆形按钮 */
-  width: 40px; height: 40px;
-  margin: 0 auto; /* 居中 */
-}
-.sidebar-nav.collapsed .toggle-btn {
-  margin: 0 auto; /* 按钮居中 */
-}
-.sidebar-nav.collapsed .sidebar-header {
-  justify-content: center;
-}
-/* 收起时隐藏 Logo 盒子，只留 toggle 按钮 (或者你可以调整逻辑保留小图标) */
-.sidebar-nav.collapsed .logo-box {
-  display: none;
-}
-.sidebar-nav.collapsed .sidebar-footer {
-  justify-content: center;
-}
+/* 滚动条 */
+.nav-content::-webkit-scrollbar { width: 4px; }
+.nav-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+.nav-content::-webkit-scrollbar-track { background: transparent; }
 </style>

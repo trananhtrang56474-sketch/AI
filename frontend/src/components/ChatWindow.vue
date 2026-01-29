@@ -1,9 +1,12 @@
 <template>
   <div class="chat-window" ref="scrollContainer">
+    
     <div v-if="messages.length === 0" class="empty-state">
-      <div class="empty-icon">👋</div>
-      <h3>开始一次新的心灵对话</h3>
-      <p>这里是安全的空间，请随意倾诉你的烦恼或分享你的快乐。</p>
+      <div class="empty-content">
+        <div class="empty-icon">🌱</div>
+        <h3>开启心灵之旅</h3>
+        <p>这里是安全的树洞，随时倾诉你的烦恼...</p>
+      </div>
     </div>
 
     <div v-else class="message-list">
@@ -11,16 +14,20 @@
         v-for="(msg, index) in messages" 
         :key="index" 
         class="message-row"
-        :class="msg.sender === 'user' ? 'message-user' : 'message-ai'"
+        :class="[
+          msg.sender === 'user' ? 'message-user' : 'message-ai',
+          'animate-slide-up'
+        ]"
       >
         <div class="avatar">
-          <span v-if="msg.sender === 'ai' || msg.sender === 'assistant'" role="img">🤖</span>
-          <span v-else role="img">👤</span>
+          <img v-if="msg.sender === 'ai' || msg.sender === 'assistant'" src="https://api.iconify.design/noto:robot.svg" alt="AI" />
+          <img v-else src="https://api.iconify.design/noto:person-taking-bath-light-skin-tone.svg" alt="User" />
         </div>
 
         <div class="bubble-container">
+          <span class="sender-name">{{ msg.sender === 'user' ? '我' : 'AI 咨询师' }}</span>
+          
           <div class="bubble">
-            
             <div v-if="msg.isLoading" class="typing-indicator">
               <span></span><span></span><span></span>
             </div>
@@ -45,41 +52,35 @@
             <div v-else class="text-content" :class="{'error-text': msg.isError}">
               {{ msg.content }}
             </div>
-
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="previewUrl" class="image-preview-modal" @click="closePreview">
-      <img :src="previewUrl" @click.stop />
-      <span class="close-btn" @click="closePreview">×</span>
-    </div>
-
+    <transition name="fade">
+      <div v-if="previewUrl" class="image-preview-modal" @click="closePreview">
+        <img :src="previewUrl" @click.stop />
+        <button class="close-btn" @click="closePreview">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
 import { ref, watch, nextTick } from 'vue';
-// ✨ 引入 Markdown 渲染工具
 import { renderMarkdown } from '../utils/markdown';
 
 const props = defineProps({
-  messages: {
-    type: Array,
-    default: () => []
-  }
+  messages: { type: Array, default: () => [] }
 });
 
 const scrollContainer = ref(null);
 const previewUrl = ref(null);
 
-// ✨ Markdown 渲染函数
-const renderMessage = (content) => {
-  return renderMarkdown(content);
-};
+const renderMessage = (content) => renderMarkdown(content);
 
-// 图片判断逻辑 (保持您原有的超强逻辑)
 const isImage = (content) => {
   if (!content || typeof content !== 'string') return false;
   if (content.startsWith('blob:')) return true;
@@ -107,134 +108,171 @@ const handleImageError = (e) => {
   e.target.style.minWidth = "150px";
 };
 
-watch(
-  () => props.messages, 
-  () => { scrollToBottom(); }, 
-  { deep: true, immediate: true }
-);
+watch(() => props.messages, () => { scrollToBottom(); }, { deep: true, immediate: true });
 </script>
 
 <style scoped>
+/* === 1. 容器样式 === */
 .chat-window {
-  flex: 1; overflow-y: auto; padding: 24px; background-color: #f4f7f9;
-  scroll-behavior: smooth; position: relative;
+  flex: 1; 
+  overflow-y: auto; 
+  padding: 20px 24px;
+  background-color: transparent; 
+  scroll-behavior: smooth; 
+  position: relative;
 }
+
+/* 美化滚动条 */
 .chat-window::-webkit-scrollbar { width: 6px; }
-.chat-window::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 4px; }
-
-.empty-state {
-  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: #888; text-align: center;
+.chat-window::-webkit-scrollbar-track { background: transparent; }
+.chat-window::-webkit-scrollbar-thumb { 
+  background-color: rgba(0,0,0,0.1); 
+  border-radius: 4px; 
 }
-.empty-icon { font-size: 48px; margin-bottom: 16px; }
-.empty-state h3 { color: #333; margin-bottom: 8px; }
+.chat-window::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,0.2); }
 
-.message-row { display: flex; margin-bottom: 20px; align-items: flex-start; gap: 12px; }
+/* === 2. 空状态 (统一玻璃风格) === */
+.empty-state {
+  height: 100%; display: flex; align-items: center; justify-content: center;
+}
+.empty-content {
+  text-align: center;
+  background: var(--glass-bg); /* ✅ 全局变量 */
+  backdrop-filter: blur(4px);
+  border: var(--glass-border); /* ✅ 全局变量 */
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
+}
+.empty-icon { font-size: 56px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+.empty-state h3 { color: var(--text-main); margin-bottom: 8px; font-weight: 600; }
+.empty-state p { color: var(--text-sub); font-size: 14px; }
+
+/* === 3. 消息行布局 === */
+.message-row { 
+  display: flex; margin-bottom: 24px; align-items: flex-start; gap: 14px; 
+}
 .message-user { flex-direction: row-reverse; }
 
+/* === 4. 头像美化 === */
 .avatar {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 42px; height: 42px; 
+  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  background: rgba(255,255,255,0.8);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.9);
 }
-.message-ai .avatar { background: #fff; border: 1px solid #eee; }
-.message-user .avatar { background: #1890ff; border: 1px solid #bae7ff; }
+.avatar img { width: 70%; height: 70%; object-fit: contain; }
 
-/* 气泡 */
+/* === 5. 气泡核心样式 === */
+.bubble-container { display: flex; flex-direction: column; max-width: 70%; }
+.message-user .bubble-container { align-items: flex-end; }
+
+.sender-name {
+  font-size: 12px; color: var(--text-sub); margin-bottom: 4px; margin-left: 4px;
+  opacity: 0.8;
+}
+.message-user .sender-name { display: none; }
+
 .bubble {
-  padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 1.6;
-  max-width: 600px; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  position: relative; overflow: hidden; 
+  padding: 14px 18px; 
+  border-radius: 18px; 
+  font-size: 15px; 
+  line-height: 1.6;
+  position: relative; 
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: all 0.3s;
 }
-.message-ai .bubble { background: #fff; color: #333; border-top-left-radius: 2px; }
-.message-user .bubble { background: #1890ff; color: #fff; border-top-right-radius: 2px; }
 
-/* 图片样式 */
-.image-wrapper { display: block; min-width: 100px; min-height: 100px; }
+/* 🤖 AI 气泡：使用全局玻璃背景 */
+.message-ai .bubble { 
+  background: rgba(255, 255, 255, 0.85); /* 稍微不透明一点以保证阅读清晰 */
+  backdrop-filter: blur(4px);
+  color: var(--text-main); 
+  border-top-left-radius: 4px;
+}
+
+/* 👤 用户 气泡：使用全局主色渐变 */
+.message-user .bubble { 
+  background: var(--primary-gradient); /* ✅ 随主题变色 */
+  color: #fff; 
+  border-top-right-radius: 4px;
+  /* 阴影使用主色的 RGB */
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
+}
+
+/* === 6. 内容样式细节 === */
 .chat-image {
-  display: block; max-width: 100%; max-height: 300px; object-fit: contain;
-  cursor: zoom-in; border-radius: 8px; background-color: #fff;
+  border-radius: 12px; max-width: 100%; cursor: zoom-in; transition: transform 0.2s;
 }
-.error-text { color: #ff4d4f; }
+.chat-image:hover { transform: scale(1.02); }
 
-/* 打字机动画 */
-.typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
+/* 打字机动画点 */
+.typing-indicator { display: flex; gap: 5px; padding: 4px 8px; }
 .typing-indicator span {
-  width: 6px; height: 6px; background: #999; border-radius: 50%;
+  width: 6px; height: 6px; 
+  background: var(--text-sub); /* ✅ 随主题适配 */
+  border-radius: 50%;
   animation: bounce 1.4s infinite ease-in-out both;
 }
 .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
 .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
-/* 预览框 */
-.image-preview-modal {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.85); z-index: 9999;
-  display: flex; align-items: center; justify-content: center;
-  cursor: zoom-out; animation: fadeIn 0.2s;
-}
-.image-preview-modal img { max-width: 90vw; max-height: 90vh; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-.close-btn { position: absolute; top: 20px; right: 30px; color: white; font-size: 30px; cursor: pointer; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* === 7. Markdown 定制 (适配变量) === */
+.markdown-body { font-size: 15px; color: var(--text-main); }
 
-/* ✨✨✨ Markdown 专用样式 (深度选择器) ✨✨✨ */
-.markdown-body {
-  font-size: 15px;
-  line-height: 1.7; 
-  color: #2c3e50;
-  text-align: left;
+/* 加粗：变为主色 + 淡背景 */
+.markdown-body :deep(strong) { 
+  color: var(--primary-color); 
+  background: rgba(var(--primary-rgb), 0.1); 
+  padding: 0 2px;
+  border-radius: 2px;
 }
 
-/* 1. 段落间距 */
-.markdown-body :deep(p) { margin-bottom: 0.8em; margin-top: 0; }
-.markdown-body :deep(p:last-child) { margin-bottom: 0; }
-
-/* 2. 列表样式 */
-.markdown-body :deep(ul), .markdown-body :deep(ol) { padding-left: 20px; margin: 0.5em 0; }
-.markdown-body :deep(li) { margin-bottom: 0.4em; list-style-type: disc; }
-.markdown-body :deep(ol) :deep(li) { list-style-type: decimal; }
-
-/* 3. 加粗高亮 */
-.markdown-body :deep(strong) {
-  font-weight: 600; color: #1a1a1a;
-  background-color: rgba(255, 235, 59, 0.25); /* 淡淡的黄色高亮 */
-  padding: 0 2px; border-radius: 2px;
+/* 链接：变为主色 + 虚线 */
+.markdown-body :deep(a) { 
+  color: var(--primary-color); 
+  border-bottom: 1px dashed var(--primary-color); 
 }
 
-/* 4. 链接样式 */
-.markdown-body :deep(a) {
-  color: #1890ff; text-decoration: none; border-bottom: 1px dashed #1890ff;
-}
-.markdown-body :deep(a:hover) { border-bottom-style: solid; }
-
-/* 5. 引用块 (Blockquote) */
-.markdown-body :deep(blockquote) {
-  margin: 10px 0; padding: 0 1em; color: #6a737d;
-  border-left: 4px solid #dfe2e5; background-color: #fafafa;
-}
-
-/* 6. 表格样式 (Table) */
-.markdown-body :deep(table) {
-  border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px;
-}
-.markdown-body :deep(th), .markdown-body :deep(td) {
-  border: 1px solid #e1e4e8; padding: 6px 10px;
-}
-.markdown-body :deep(th) { background-color: #f6f8fa; font-weight: 600; }
-.markdown-body :deep(tr:nth-child(2n)) { background-color: #fbfcfd; }
-
-/* 7. 代码块样式 (Code) */
-.markdown-body :deep(pre) {
-  background-color: #f6f8fa; border-radius: 6px; padding: 12px;
-  overflow-x: auto; margin: 10px 0; border: 1px solid #eaecef;
+/* 代码块：适配玻璃感 */
+.markdown-body :deep(pre) { 
+  background: rgba(255,255,255,0.6); 
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 8px;
 }
 .markdown-body :deep(code) {
-  font-family: Consolas, Monaco, 'Courier New', monospace;
-  font-size: 13px; background-color: rgba(27, 31, 35, 0.05);
-  padding: 2px 4px; border-radius: 3px; color: #476582;
+  background: rgba(255,255,255,0.6); 
+  color: var(--text-main);
 }
-.markdown-body :deep(pre) :deep(code) {
-  background-color: transparent; padding: 0; color: #24292e;
+
+/* === 8. 动画 Keyframes === */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+.animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+/* === 9. 预览模态框 === */
+.image-preview-modal {
+  background: rgba(0,0,0,0.9); z-index: 9999;
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+}
+.image-preview-modal img { max-width: 95vw; max-height: 95vh; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+.close-btn {
+  position: absolute; top: 20px; right: 20px;
+  background: rgba(255,255,255,0.2); border: none; border-radius: 50%;
+  width: 40px; height: 40px; color: white; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.close-btn:hover { background: rgba(255,255,255,0.4); }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
