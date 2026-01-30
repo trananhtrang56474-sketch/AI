@@ -27,9 +27,11 @@
         <div class="bubble-container">
           <span class="sender-name">{{ msg.sender === 'user' ? '我' : 'AI 咨询师' }}</span>
           
-          <div class="bubble">
+          <div class="bubble" :class="{ 'image-bubble': isImage(msg.content) }">
+            
             <div v-if="msg.isLoading" class="typing-indicator">
-              <span></span><span></span><span></span>
+              <span class="typing-text">AI 正在思考</span>
+              <span class="typing-cursor"></span>
             </div>
 
             <div v-else-if="isImage(msg.content)" class="image-wrapper">
@@ -106,77 +108,44 @@ const handleImageError = (e) => {
   e.target.style.background = "#f5f5f5";
   e.target.style.padding = "20px";
   e.target.style.minWidth = "150px";
+  e.target.style.borderRadius = "12px";
 };
 
 watch(() => props.messages, () => { scrollToBottom(); }, { deep: true, immediate: true });
 </script>
 
 <style scoped>
-/* === 1. 容器样式 === */
+/* === 1. 容器 === */
 .chat-window {
-  flex: 1; 
-  overflow-y: auto; 
-  padding: 20px 24px;
-  background-color: transparent; 
-  scroll-behavior: smooth; 
-  position: relative;
+  flex: 1; overflow-y: auto; padding: 20px 24px; background-color: transparent; scroll-behavior: smooth; position: relative;
 }
-
-/* 美化滚动条 */
 .chat-window::-webkit-scrollbar { width: 6px; }
 .chat-window::-webkit-scrollbar-track { background: transparent; }
-.chat-window::-webkit-scrollbar-thumb { 
-  background-color: rgba(0,0,0,0.1); 
-  border-radius: 4px; 
-}
+.chat-window::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 4px; }
 .chat-window::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,0.2); }
 
-/* === 2. 空状态 (统一玻璃风格) === */
-.empty-state {
-  height: 100%; display: flex; align-items: center; justify-content: center;
-}
-.empty-content {
-  text-align: center;
-  background: var(--glass-bg); /* ✅ 全局变量 */
-  backdrop-filter: blur(4px);
-  border: var(--glass-border); /* ✅ 全局变量 */
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: var(--glass-shadow);
-}
+/* === 2. 空状态 === */
+.empty-state { height: 100%; display: flex; align-items: center; justify-content: center; }
+.empty-content { text-align: center; background: var(--glass-bg); backdrop-filter: blur(4px); border: var(--glass-border); padding: 40px; border-radius: 20px; box-shadow: var(--glass-shadow); }
 .empty-icon { font-size: 56px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
 .empty-state h3 { color: var(--text-main); margin-bottom: 8px; font-weight: 600; }
 .empty-state p { color: var(--text-sub); font-size: 14px; }
 
-/* === 3. 消息行布局 === */
-.message-row { 
-  display: flex; margin-bottom: 24px; align-items: flex-start; gap: 14px; 
-}
+/* === 3. 消息行 === */
+.message-row { display: flex; margin-bottom: 24px; align-items: flex-start; gap: 14px; }
 .message-user { flex-direction: row-reverse; }
 
-/* === 4. 头像美化 === */
-.avatar {
-  width: 42px; height: 42px; 
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.8);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  flex-shrink: 0;
-  overflow: hidden;
-  border: 2px solid rgba(255,255,255,0.9);
-}
+/* 头像 */
+.avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.08); flex-shrink: 0; overflow: hidden; border: 2px solid rgba(255,255,255,0.9); }
 .avatar img { width: 70%; height: 70%; object-fit: contain; }
 
-/* === 5. 气泡核心样式 === */
+/* 气泡容器 */
 .bubble-container { display: flex; flex-direction: column; max-width: 70%; }
 .message-user .bubble-container { align-items: flex-end; }
-
-.sender-name {
-  font-size: 12px; color: var(--text-sub); margin-bottom: 4px; margin-left: 4px;
-  opacity: 0.8;
-}
+.sender-name { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; margin-left: 4px; opacity: 0.8; }
 .message-user .sender-name { display: none; }
 
+/* === 4. 气泡样式 === */
 .bubble {
   padding: 14px 18px; 
   border-radius: 18px; 
@@ -184,95 +153,99 @@ watch(() => props.messages, () => { scrollToBottom(); }, { deep: true, immediate
   line-height: 1.6;
   position: relative; 
   word-wrap: break-word;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-/* 🤖 AI 气泡：使用全局玻璃背景 */
 .message-ai .bubble { 
-  background: rgba(255, 255, 255, 0.85); /* 稍微不透明一点以保证阅读清晰 */
+  background: rgba(255, 255, 255, 0.85); 
   backdrop-filter: blur(4px);
   color: var(--text-main); 
   border-top-left-radius: 4px;
 }
 
-/* 👤 用户 气泡：使用全局主色渐变 */
 .message-user .bubble { 
-  background: var(--primary-gradient); /* ✅ 随主题变色 */
+  background: var(--primary-gradient); 
   color: #fff; 
   border-top-right-radius: 4px;
-  /* 阴影使用主色的 RGB */
   box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
 }
 
-/* === 6. 内容样式细节 === */
-.chat-image {
-  border-radius: 12px; max-width: 100%; cursor: zoom-in; transition: transform 0.2s;
+.bubble.image-bubble {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 12px;
+  overflow: hidden;
 }
-.chat-image:hover { transform: scale(1.02); }
 
-/* 打字机动画点 */
-.typing-indicator { display: flex; gap: 5px; padding: 4px 8px; }
-.typing-indicator span {
-  width: 6px; height: 6px; 
-  background: var(--text-sub); /* ✅ 随主题适配 */
-  border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
+/* === ✨ 任务一：灵动的打字光标样式 === */
+.typing-indicator { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  padding: 2px 4px; /* 稍微紧凑一点 */
 }
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
 
-/* === 7. Markdown 定制 (适配变量) === */
-.markdown-body { font-size: 15px; color: var(--text-main); }
+.typing-text {
+  font-size: 13px;
+  color: var(--text-sub);
+  font-weight: 500;
+}
 
-/* 加粗：变为主色 + 淡背景 */
-.markdown-body :deep(strong) { 
-  color: var(--primary-color); 
-  background: rgba(var(--primary-rgb), 0.1); 
-  padding: 0 2px;
+/* 那个闪烁的小方块 */
+.typing-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background-color: var(--primary-color); /* 跟随主题色变色 */
   border-radius: 2px;
+  animation: blink 1s step-end infinite;
 }
 
-/* 链接：变为主色 + 虚线 */
-.markdown-body :deep(a) { 
-  color: var(--primary-color); 
-  border-bottom: 1px dashed var(--primary-color); 
+/* 闪烁动画 */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
-/* 代码块：适配玻璃感 */
-.markdown-body :deep(pre) { 
-  background: rgba(255,255,255,0.6); 
-  border: 1px solid rgba(0,0,0,0.05);
-  border-radius: 8px;
-}
-.markdown-body :deep(code) {
-  background: rgba(255,255,255,0.6); 
-  color: var(--text-main);
-}
 
-/* === 8. 动画 Keyframes === */
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+/* === 5. 其他样式 === */
+.chat-image {
+  display: block; border-radius: 12px; max-width: 100%; cursor: zoom-in;
+  transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
+.chat-image:hover { transform: scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+.markdown-body { font-size: 15px; color: var(--text-main); }
+.markdown-body :deep(strong) { color: var(--primary-color); background: rgba(var(--primary-rgb), 0.1); padding: 0 2px; border-radius: 2px; }
+.markdown-body :deep(a) { color: var(--primary-color); border-bottom: 1px dashed var(--primary-color); }
+.markdown-body :deep(pre) { background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; }
+.markdown-body :deep(code) { background: rgba(255,255,255,0.6); color: var(--text-main); }
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
-/* === 9. 预览模态框 === */
 .image-preview-modal {
-  background: rgba(0,0,0,0.9); z-index: 9999;
-  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.2); 
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  z-index: 9999; position: fixed; inset: 0; 
+  display: flex; align-items: center; justify-content: center; cursor: zoom-out; animation: fadeIn 0.3s ease;
 }
-.image-preview-modal img { max-width: 95vw; max-height: 95vh; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-.close-btn {
-  position: absolute; top: 20px; right: 20px;
-  background: rgba(255,255,255,0.2); border: none; border-radius: 50%;
-  width: 40px; height: 40px; color: white; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+.image-preview-modal img {
+  max-width: 900px; max-height: 85vh; width: auto; height: auto;
+  object-fit: contain; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  cursor: default; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.close-btn:hover { background: rgba(255,255,255,0.4); }
+.close-btn { 
+  position: absolute; top: 30px; right: 30px; background: rgba(0,0,0,0.1); 
+  border: 1px solid rgba(255,255,255,0.4); border-radius: 50%; width: 44px; height: 44px; 
+  color: #333; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;
+}
+.close-btn:hover { background: rgba(0,0,0,0.2); transform: scale(1.1); }
+
+@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

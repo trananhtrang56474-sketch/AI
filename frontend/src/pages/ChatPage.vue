@@ -1,5 +1,6 @@
 <template>
   <div class="chat-pure-container">
+    
     <header class="chat-header glass-header">
       <div class="header-info">
         <h3>{{ headerTitle }}</h3>
@@ -44,7 +45,7 @@
       />
     </div>
 
-    <div class="input-area-wrapper glass-footer">
+    <div class="input-area-wrapper">
       <MessageInput 
         :is-loading="isLoading || isTyping" 
         @send-composite="handleCompositeSend" 
@@ -202,7 +203,7 @@ const handleCompositeSend = async ({ text, file }) => {
 }
 
 .glass-header {
-  background: var(--glass-bg); /* ✅ 使用全局变量 */
+  background: var(--glass-bg); 
   backdrop-filter: blur(12px);
   border-bottom: var(--glass-border);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
@@ -211,24 +212,24 @@ const handleCompositeSend = async ({ text, file }) => {
 
 .header-info h3 { 
   margin: 0; font-size: 18px; font-weight: 600; 
-  color: var(--text-main); /* ✅ 使用全局变量 */
+  color: var(--text-main); 
   letter-spacing: 0.5px;
 }
 
 .status-box {
   display: flex; align-items: center; margin-left: 12px;
-  background: rgba(82, 196, 26, 0.1); /* 也可以定义 --success-rgb */
+  background: rgba(82, 196, 26, 0.1); 
   padding: 4px 10px; border-radius: 20px;
 }
 .status-dot {
   width: 8px; height: 8px; 
-  background: var(--success-color); /* ✅ 使用全局变量 */
+  background: var(--success-color); 
   border-radius: 50%; margin-right: 6px;
   box-shadow: 0 0 8px rgba(82, 196, 26, 0.4);
 }
 .status-text { 
   font-size: 12px; 
-  color: var(--success-color); /* ✅ 使用全局变量 */
+  color: var(--success-color); 
   font-weight: 500; 
 }
 
@@ -240,13 +241,13 @@ const handleCompositeSend = async ({ text, file }) => {
 
 .dashboard-card {
   border-radius: 16px; 
-  border: var(--glass-border); /* ✅ 使用全局变量 */
+  border: var(--glass-border); 
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .glass-card {
-  background: var(--glass-bg); /* ✅ 使用全局变量 */
+  background: var(--glass-bg); 
   backdrop-filter: blur(12px);
   box-shadow: var(--glass-shadow);
 }
@@ -283,19 +284,16 @@ const handleCompositeSend = async ({ text, file }) => {
 .chat-window-wrapper {
   flex: 1; overflow: hidden; display: flex; flex-direction: column;
   position: relative; z-index: 1; 
-  /* 背景透明，让光透进来 */
   background: transparent; 
 }
 
-/* === 5. 输入框区域 === */
+/* === 5. 输入框区域 (背景透明) === */
 .input-area-wrapper {
-  position: relative; z-index: 10;
-}
-
-.glass-footer {
-  background: var(--glass-bg); /* ✅ 使用全局变量 */
-  backdrop-filter: blur(10px);
-  border-top: var(--glass-border);
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  /* ✨ 关键：透明背景，只让 MessageInput 组件本身悬浮 */
+  background: transparent; 
 }
 
 /* Vue 动画 */
