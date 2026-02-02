@@ -73,8 +73,21 @@
               @click="handleSelectSession(item.id)"
               :title="item.title"
             >
-              <span class="session-icon">💬</span>
-              <span v-show="!isCollapsed" class="title">{{ item.title || '未命名对话' }}</span>
+              <div class="item-content">
+                <span class="session-icon">💬</span>
+                <span v-show="!isCollapsed" class="title">{{ item.title || '未命名对话' }}</span>
+              </div>
+
+              <button 
+                v-show="!isCollapsed" 
+                class="delete-btn" 
+                @click.stop="openDeleteConfirm(item.id)"
+                title="删除会话"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
             </div>
           </div>
         </transition>
@@ -87,6 +100,15 @@
         <span v-show="!isCollapsed" class="logout-text">退出登录</span>
       </div>
     </div>
+
+    <ConfirmModal 
+      :visible="showDeleteModal" 
+      title="删除确认"
+      content="删除后，这段对话记忆将永远消失，确定要继续吗？"
+      @confirm="executeDelete" 
+      @cancel="showDeleteModal = false" 
+    />
+
   </nav>
 </template>
 
@@ -96,6 +118,10 @@ import axios from 'axios';
 import { useRouter, useRoute } from 'vue-router';
 import { bus } from '../eventBus'; 
 
+// ✨ 引入工具和组件
+import { showToast } from '../utils/toast.js'; 
+import ConfirmModal from './ConfirmModal.vue'; 
+
 const router = useRouter();
 const route = useRoute();
 
@@ -104,15 +130,21 @@ const isHistoryOpen = ref(true);
 const currentSessionId = ref(null);
 const isCollapsed = ref(false);
 
+// ✨ 弹窗状态管理
+const showDeleteModal = ref(false);
+const sessionToDelete = ref(null);
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const toggleSidebar = () => { isCollapsed.value = !isCollapsed.value; };
 
 const loadSessions = async () => {
   const userId = localStorage.getItem('user_id');
   if (!userId) return;
   try {
-    const res = await axios.get(`http://127.0.0.1:8080/api/sessions?user_id=${userId}`);
+    const res = await axios.get(`${API_BASE}/api/sessions?user_id=${userId}`);
     sessions.value = res.data;
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error("加载侧边栏失败:", e); }
 };
 
 const handleSelectSession = (id) => {
@@ -125,9 +157,46 @@ const handleNewChat = () => {
   router.push('/chat');
 };
 
+// ✨ 修改点 3：打开弹窗，而不是直接删除
+const openDeleteConfirm = (sessionId) => {
+  sessionToDelete.value = sessionId;
+  showDeleteModal.value = true;
+};
+
+// ✨ 修改点 4：执行删除逻辑 (接入 Toast)
+const executeDelete = async () => {
+  if (!sessionToDelete.value) return;
+  
+  const sessionId = sessionToDelete.value;
+  showDeleteModal.value = false; // 先关弹窗
+
+  try {
+    await axios.delete(`${API_BASE}/api/sessions/${sessionId}`);
+    
+    // 从 UI 移除
+    sessions.value = sessions.value.filter(s => s.id !== sessionId);
+
+    // 如果删的是当前会话，跳走
+    if (currentSessionId.value == sessionId) {
+      handleNewChat();
+    }
+
+    // 🎉 成功提示
+    showToast('删除成功', 'success');
+
+  } catch (e) {
+    console.error("删除失败:", e);
+    // ❌ 失败提示
+    showToast('删除失败，请稍后重试', 'error');
+  }
+};
+
 const handleLogout = () => {
-  localStorage.clear();
+  localStorage.removeItem('user_id');
+  localStorage.removeItem('username');
   router.push('/login');
+  // 💡 退出提示
+  showToast('已退出登录', 'info');
 };
 
 watch(() => bus.refreshSessions, () => loadSessions());
@@ -139,7 +208,7 @@ onMounted(() => loadSessions());
 </script>
 
 <style scoped>
-/* === 1. 玻璃态容器 === */
+/* 样式保持不变，完美复用之前的 */
 .glass-sidebar {
   width: 260px;
   height: 100%;
@@ -149,10 +218,9 @@ onMounted(() => loadSessions());
   padding: 20px 16px;
   transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   overflow: hidden;
-  color: var(--text-main); /* ✅ 使用全局文字色 */
+  color: var(--text-main); 
 }
 
-/* === 2. Header === */
 .sidebar-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 24px; min-height: 40px;
@@ -160,12 +228,11 @@ onMounted(() => loadSessions());
 .logo-box { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .logo-text { 
   margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;
-  color: var(--primary-color); /* ✅ 使用全局主色 */
+  color: var(--primary-color);
 }
 .logo-emoji { font-size: 22px; }
 .logo-box-mini { margin: 0 auto; font-size: 24px; }
 
-/* 切换按钮 */
 .toggle-btn {
   width: 32px; height: 32px;
   border: none; background: rgba(255,255,255,0.5); 
@@ -176,23 +243,21 @@ onMounted(() => loadSessions());
 }
 .toggle-btn:hover { 
   background: #fff; 
-  color: var(--primary-color); /* ✅ 悬停变主色 */
+  color: var(--primary-color);
   transform: scale(1.1); 
 }
 .toggle-btn .icon { width: 16px; height: 16px; }
 
-/* === 3. 导航内容 === */
 .nav-content { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 8px; }
 
-/* 新建按钮 */
 .action-area { margin-bottom: 16px; }
 .new-chat-btn {
   width: 100%; padding: 12px; 
-  background: var(--primary-gradient); /* ✅ 使用全局渐变 */
+  background: var(--primary-gradient); 
   color: white; border: none; border-radius: 12px;
   cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;
   transition: all 0.3s; white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3); /* ✅ 阴影跟随主色 */
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
 .new-chat-btn:hover { 
   transform: translateY(-2px); 
@@ -200,7 +265,6 @@ onMounted(() => loadSessions());
 }
 .new-chat-btn.collapsed-btn { width: 44px; height: 44px; padding: 0; border-radius: 50%; margin: 0 auto; }
 
-/* 导航项 */
 .nav-item {
   display: flex; align-items: center; padding: 10px 12px;
   color: #555; border-radius: 12px; cursor: pointer; transition: 0.2s;
@@ -208,18 +272,17 @@ onMounted(() => loadSessions());
 }
 .nav-item:hover { 
   background: rgba(255,255,255,0.5); 
-  color: var(--primary-color); /* ✅ 悬停变主色 */
+  color: var(--primary-color);
 }
 .nav-item.active { 
   background: rgba(255,255,255,0.8); 
-  color: var(--primary-color); /* ✅ 激活变主色 */
+  color: var(--primary-color);
   font-weight: 600; 
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 .icon-wrapper { width: 24px; display: flex; justify-content: center; margin-right: 12px; }
 .nav-icon { width: 20px; height: 20px; }
 
-/* 历史列表 */
 .history-group { margin-top: 12px; flex: 1; display: flex; flex-direction: column; }
 .group-title {
   display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;
@@ -229,23 +292,41 @@ onMounted(() => loadSessions());
 .arrow.rotated { transform: rotate(180deg); }
 
 .history-list { overflow-y: auto; padding-right: 4px; }
+
 .history-item {
-  padding: 10px 12px; font-size: 14px; color: #666; cursor: pointer; border-radius: 10px;
-  display: flex; align-items: center; gap: 10px; white-space: nowrap; overflow: hidden; margin-bottom: 2px;
+  padding: 10px 12px; 
+  font-size: 14px; color: #666; 
+  cursor: pointer; border-radius: 10px; 
+  display: flex; align-items: center; justify-content: space-between;
+  white-space: nowrap; overflow: hidden; margin-bottom: 2px; 
   transition: all 0.2s;
+  position: relative;
 }
 .history-item:hover { background: rgba(255,255,255,0.4); transform: translateX(2px); }
 .history-item.active { 
-  background: rgba(var(--primary-rgb), 0.1); /* ✅ 激活背景变淡主色 */
+  background: rgba(var(--primary-rgb), 0.1); 
   color: var(--primary-color); 
-  font-weight: 500;
-  border-left: 3px solid var(--primary-color); /* ✅ 左侧条 */
+  font-weight: 500; 
+  border-left: 3px solid var(--primary-color); 
 }
+
+.item-content { display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; }
 .session-icon { font-size: 16px; opacity: 0.7; }
+.title { overflow: hidden; text-overflow: ellipsis; }
+
+.delete-btn {
+  background: transparent; border: none; color: #999;
+  cursor: pointer; padding: 4px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; 
+  transition: all 0.2s;
+}
+.delete-btn:hover { background: #fee2e2; color: #ef4444; } 
+.history-item:hover .delete-btn { opacity: 1; }
+
 .empty-tip { font-size: 12px; color: #ccc; text-align: center; margin-top: 20px; }
 .divider { height: 1px; background: rgba(0,0,0,0.05); margin: 8px 0; }
 
-/* === 4. Footer === */
 .sidebar-footer { margin-top: auto; padding-top: 16px; }
 .footer-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -254,22 +335,20 @@ onMounted(() => loadSessions());
 }
 .footer-btn:hover { 
   background: rgba(255, 77, 79, 0.1); 
-  color: var(--danger-color); /* ✅ 使用危险色变量 */
+  color: var(--danger-color);
 }
 
-/* === 5. 折叠适配 === */
 .sidebar-nav.collapsed { width: 80px; padding: 20px 10px; }
 .sidebar-nav.collapsed .nav-item { justify-content: center; padding: 12px 0; }
 .sidebar-nav.collapsed .icon-wrapper { margin: 0; }
 .sidebar-nav.collapsed .history-item { justify-content: center; padding: 12px 0; border-left: none; }
 .sidebar-nav.collapsed .history-item.active { 
-  background: rgba(var(--primary-rgb), 0.2); /* ✅ 折叠时背景稍微深一点 */
+  background: rgba(var(--primary-rgb), 0.2);
   border-radius: 12px; 
 }
 .sidebar-nav.collapsed .sidebar-header { justify-content: center; }
 .sidebar-nav.collapsed .toggle-btn { margin: 0 auto; }
 
-/* 动画 */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .pulse-hover:hover { animation: pulse 1s infinite; }
@@ -279,7 +358,6 @@ onMounted(() => loadSessions());
   100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); } 
 }
 
-/* 滚动条 */
 .nav-content::-webkit-scrollbar { width: 4px; }
 .nav-content::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
 .nav-content::-webkit-scrollbar-track { background: transparent; }

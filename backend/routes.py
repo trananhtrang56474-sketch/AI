@@ -6,24 +6,24 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from flask_mail import Message  # ✨ 1. 引入邮件消息类
+from flask_mail import Message
 
 # 引入配置
-from extensions import db, mail  # ✨ 2. 引入 mail 对象
+from extensions import db, mail
 from models import User, ChatLog, ChatSession
 
-# ✨✨✨ 引入核心智能模块 ✨✨✨
+# 引入核心智能模块
 from llm.qwen_client import QwenClient
 from rag.retriever import rag_engine
 from rag.prompt_builder import prompt_engine
-from agent.emotion import analyze_emotion, analyze_trend  # 感知
-from agent.policy import PolicyRouter                   # 决策
+from agent.emotion import analyze_emotion, analyze_trend
+from agent.policy import PolicyRouter
 
 # 创建蓝图
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 llm_client = QwenClient()
 
-# ✨ 3. 全局变量：临时存储验证码 (格式: {'xx@163.com': '123456'})
+# 全局变量：临时存储验证码
 verification_codes = {}
 
 # ===========================
@@ -37,61 +37,51 @@ def allowed_file(filename):
 # 1. 基础接口 (注册/登录/验证码)
 # ===========================
 
-# ✨✨✨ 新增：发送验证码接口 ✨✨✨
 @api_bp.route("/send-code", methods=["POST"])
 def send_code():
     email = request.json.get("email")
     if not email:
         return jsonify({"error": "请输入邮箱地址"}), 400
 
-    # 生成 6 位数字验证码
     code = ''.join(random.choices(string.digits, k=6))
-    verification_codes[email] = code  # 存入内存
+    verification_codes[email] = code
 
     try:
-        # 构建邮件
         msg = Message(subject="【AI Counselor】注册验证码", recipients=[email])
         msg.body = f"欢迎注册 AI Counselor 心理咨询平台。\n您的验证码是：{code}\n有效期 5 分钟，请勿泄露给他人。"
         
-        # 发送
         mail.send(msg)
         print(f"✅ [Mail] 验证码已发送至 {email}")
         return jsonify({"message": "验证码发送成功"})
 
     except Exception as e:
         print(f"❌ [Mail Error] 发送失败: {e}")
-        # 🔥🔥🔥 毕设专用兜底：如果邮件发不出去，直接打印在控制台 🔥🔥🔥
+        # 模拟模式
         print(f"👉 [模拟模式] 请手动输入验证码: {code}")
-        return jsonify({"message": "验证码已发送(模拟)"}) # 假装成功，让前端继续
+        return jsonify({"message": "验证码已发送(模拟)"})
 
-# ✨✨✨ 修改：注册接口 (增加验证码校验) ✨✨✨
 @api_bp.route("/register", methods=["POST"])
 def register():
     data = request.json
-    email = data.get("email")  # 前端现在传的是 email
+    email = data.get("email")
     password = data.get("password")
     code = data.get("code")
 
-    # 1. 校验必填项
     if not email or not password or not code:
         return jsonify({"error": "信息填写不完整"}), 400
 
-    # 2. 校验验证码
     stored_code = verification_codes.get(email)
     if not stored_code or stored_code != code:
         return jsonify({"error": "验证码错误或已过期"}), 400
 
-    # 3. 检查是否已注册 (把 email 当作 username 存)
     if User.query.filter_by(username=email).first():
         return jsonify({"error": "该邮箱已注册"}), 400
 
-    # 4. 入库
     try:
         new_user = User(username=email, password_hash=generate_password_hash(password))
         db.session.add(new_user)
         db.session.commit()
         
-        # 注册成功后清除验证码
         verification_codes.pop(email, None)
         
         return jsonify({"message": "注册成功", "user_id": new_user.id}), 201
@@ -99,17 +89,18 @@ def register():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-# 登录接口 (保持不变，只是 username 实际上是 email)
 @api_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
-    # 注意：前端登录时字段名是 username，用户填的是 email，这里逻辑兼容
     user = User.query.filter_by(username=data.get("username")).first()
     
     if user and check_password_hash(user.password_hash, data.get("password")):
         return jsonify({"message": "登录成功", "user_id": user.id, "username": user.username})
     return jsonify({"error": "账号或密码错误"}), 401
 
+# ==================================================================
+# 📚 会话管理接口 (获取列表 & ✨✨✨ 删除会话)
+# ==================================================================
 @api_bp.route("/sessions", methods=["GET"])
 def get_sessions():
     uid = request.args.get("user_id")
@@ -117,20 +108,40 @@ def get_sessions():
     sessions = ChatSession.query.filter_by(user_id=uid).order_by(ChatSession.created_at.desc()).all()
     return jsonify([{"id": s.id, "title": s.title, "created_at": s.created_at.strftime("%m-%d %H:%M")} for s in sessions])
 
+# ✨✨✨ 新增：删除会话接口 ✨✨✨
+@api_bp.route('/sessions/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+    try:
+        # 1. 查找会话
+        session = ChatSession.query.get(session_id)
+        if not session:
+            return jsonify({'error': '会话不存在'}), 404
+        
+        # 2. 删除关联的消息
+        ChatLog.query.filter_by(session_id=session_id).delete()
+        
+        # 3. 删除会话本身
+        db.session.delete(session)
+        db.session.commit()
+        
+        return jsonify({'message': '删除成功', 'id': session_id})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"删除失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ==================================================================
-# 🔥 历史记录接口 (支持状态回溯)
+# 🔥 历史记录接口
 # ==================================================================
 @api_bp.route("/history", methods=["GET"])
 def get_history():
     sid = request.args.get("session_id")
     if not sid: return jsonify([])
 
-    # 1. 获取消息记录
     logs = ChatLog.query.filter_by(session_id=sid).order_by(ChatLog.created_at.asc()).all()
     
-    # 2. 状态回溯
     last_user_log = ChatLog.query.filter_by(session_id=sid, role='user').order_by(ChatLog.created_at.desc()).first()
-    # 兼容旧数据，如果 tag 是 JSON 字符串就不用管，如果不是就直接用
     restored_emotion = last_user_log.emotion_tag if (last_user_log and last_user_log.emotion_tag) else "平静"
     
     last_ai_log = ChatLog.query.filter_by(session_id=sid, role='assistant').order_by(ChatLog.created_at.desc()).first()
@@ -165,7 +176,7 @@ def upload_file():
     except: return jsonify({'error': '保存失败'}), 500
 
 # ===========================
-# 📊 图表数据接口 (ECharts 专用)
+# 📊 图表数据接口
 # ===========================
 @api_bp.route("/chart-data", methods=["GET"])
 def get_chart_data():
@@ -174,15 +185,13 @@ def get_chart_data():
     
     if not user_id: return jsonify({"dates": [], "scores": []})
 
-    # 1. 查询最近 10 条用户消息
     query = ChatLog.query.filter_by(user_id=user_id, role='user')
     if session_id:
         query = query.filter_by(session_id=session_id)
         
     logs = query.order_by(ChatLog.created_at.desc()).limit(10).all()
-    logs.reverse() # 翻转为时间正序
+    logs.reverse()
     
-    # 2. 兜底映射表 (兼容旧数据的中文/英文标签)
     fallback_map = {
         '危机': 10, 'crisis': 10,
         '焦虑': 30, 'anxiety': 30, '抑郁': 25, 'depression': 25,
@@ -198,8 +207,6 @@ def get_chart_data():
     
     for log in logs:
         dates.append(log.created_at.strftime("%H:%M"))
-        
-        # 优先用数据库里的分数，没有则查表估算
         if log.emotion_score is not None:
             scores.append(log.emotion_score)
         else:
@@ -217,7 +224,7 @@ def get_chart_data():
     })
 
 # ===========================
-# 3. 🔥 核心聊天接口 (智能 Agent + 防御门控 + 评分版)
+# 3. 核心聊天接口
 # ===========================
 @api_bp.route("/chat", methods=["POST"])
 def chat():
@@ -240,22 +247,20 @@ def chat():
             session_id = new_session.id
         except: return jsonify({"error": "会话创建失败"}), 500
 
-    # B. 🧠 智能体感知与决策
-    current_emotion = "平静"     # 默认值
-    current_score = 60          # 默认值
+    # B. 智能体感知与决策
+    current_emotion = "平静"
+    current_score = 60
     emotion_trend = "FIRST_CONTACT"
     policy = {"stage": "VISUAL", "instruction": "多模态回复"}
     
     if user_msg and user_msg != '[发送了图片]':
-        # 1. 感知 (现在返回字典)
         analysis_result = analyze_emotion(user_msg)
         current_emotion = analysis_result.get("tag", "平静")
-        current_score = analysis_result.get("score", 60) # ✨ 获取分数
+        current_score = analysis_result.get("score", 60)
         
         emotion_trend = analyze_trend(session_id) 
         print(f"📊 [Agent] 情绪: {current_emotion} ({current_score}分) | 趋势: {emotion_trend}")
         
-        # 2. 决策
         policy = PolicyRouter.route(current_emotion, emotion_trend, user_msg)
         print(f"🧭 [Agent] 策略: {policy['stage']}")
     else:
@@ -264,7 +269,7 @@ def chat():
             "instruction": "用户发送了图片。调用视觉能力分析图片内容和氛围，结合语境回复。"
         }
 
-    # C. 📚 RAG 检索
+    # C. RAG 检索
     query_text = user_msg if (user_msg and user_msg != '[发送了图片]') else "用户发送了图片"
     search_query = f"{query_text} {policy.get('search_intent', '')}"
     knowledge = rag_engine.search(search_query)
@@ -272,9 +277,7 @@ def chat():
     if not knowledge and image_url:
         knowledge = {"type": "MULTIMODAL", "stage": "视觉分析", "content": "用户上传了图片..."}
 
-    # ==================================================================
-    # 🛡️ Step 3.5: 心理测评防御门控 (中文硬拦截版)
-    # ==================================================================
+    # 🛡️ 心理测评防御门控
     if knowledge and ("量表" in str(knowledge) or "PHQ-9" in str(knowledge) or "GAD-7" in str(knowledge)):
         negative_emotions = ["抑郁", "焦虑", "危机", "痛苦", "愤怒", "悲伤", "愧疚", "迷茫"]
         if current_emotion not in negative_emotions:
@@ -283,9 +286,8 @@ def chat():
             policy['instruction'] += "\n\n【注意】用户当前状态良好。请聚焦于积极心理学，讨论用户的优势和快乐源泉，不要提及任何病理性的内容。"
         elif current_emotion == "危机":
              policy['instruction'] += "\n\n【特别注意】用户处于危机状态。🚫 不要进行复杂的量表评估。✅ 直接进行危机干预。"
-    # ==================================================================
 
-    # D. ⚙️ 组装动态 Prompt
+    # D. 组装动态 Prompt
     base_prompt = prompt_engine.build(knowledge)
     final_prompt = (
         f"{base_prompt}\n\n"
@@ -293,7 +295,7 @@ def chat():
         f"### 干预指令 ({policy['stage']})\n{policy.get('instruction', '')}"
     )
 
-    # E. 💬 LLM 生成
+    # E. LLM 生成
     history = ChatLog.query.filter_by(session_id=session_id).order_by(ChatLog.created_at.desc()).limit(6).all()
     history.reverse()
     messages = [{"role": "system", "content": final_prompt}]
@@ -311,7 +313,7 @@ def chat():
 
     ai_reply = llm_client.chat(messages, image_path=local_image_path)
 
-    # F. 📝 存入数据库 (记得存分数！)
+    # F. 存入数据库
     try:
         if image_url:
             db.session.add(ChatLog(user_id=user_id, session_id=session_id, role="user", content=image_url, emotion_tag="multimodal"))
@@ -319,8 +321,8 @@ def chat():
             db.session.add(ChatLog(
                 user_id=user_id, session_id=session_id, role="user", 
                 content=user_msg, 
-                emotion_tag=current_emotion, # 存标签
-                emotion_score=current_score  # ✨✨✨ 存分数！
+                emotion_tag=current_emotion, 
+                emotion_score=current_score 
             ))
         db.session.add(ChatLog(
             user_id=user_id, session_id=session_id, role="assistant", 

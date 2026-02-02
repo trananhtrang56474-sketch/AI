@@ -1,6 +1,40 @@
 # Changelog
 
 本项目记录 **AI-Counselor（心理健康咨询系统）** 的全部重要迭代历程，涵盖算法、系统架构、多模态交互与伦理安全设计。
+# 📅 2026-02-02 开发进度记录
+
+## 🧱 核心架构升级 (Architecture)
+- **Pinia 全局状态管理重构**
+  - 🧠 引入 `Pinia` 作为全局状态管理方案，创建 `src/stores/chatStore.js`。
+  - 🔄 将原本分散在 `ChatPage.vue` 内的 `conversation`（聊天记录）与 `chartData`（情绪图表数据）统一迁移至 Store。
+  - 🚀 利用 Pinia 单例特性，实现会话级数据的**内存缓存**，解决 `/chat ↔ /home` 切换导致的聊天内容丢失与白屏问题。
+  - ⚙️ 在 `main.js` 中完成 `createPinia()` 全局注册，修复因 Store 未挂载导致的应用启动异常。
+
+- **会话级数据模型确立**
+  - 📦 采用 `{ sessionId: messages[] }` 的结构存储多会话聊天数据。
+  - 支持多 Session 并存、快速切换，为后续「会话列表 / 搜索 / 归档」打下基础。
+
+## 🧭 路由与组件缓存优化 (Routing & Lifecycle)
+- **KeepAlive 组件缓存**
+  - ♻️ 在 `App.vue` 中对 `ChatPage` 启用 `<KeepAlive>`，避免路由切换时组件被销毁。
+  - 配合显式 `name: 'ChatPage'`，确保缓存策略精准生效。
+
+- **路由监听逻辑重写**
+  - 🔍 重构 `watch(route.query.session_id)` 逻辑，区分：
+    - 页面切换（不清空数据）
+    - 会话切换（按需加载或命中缓存）
+  - 🧯 修复因错误判断导致的「返回聊天页内容消失」问题。
+
+- **生命周期体验修复**
+  - ⏫ 使用 `onActivated` 钩子，在组件从缓存唤醒时自动滚动至最新消息。
+  - 🧹 在 `onDeactivated / onUnmounted` 中清理定时器，避免后台打字机逻辑持续运行。
+
+## ✨ 新增功能 (Features)
+### 💬 会话管理能力
+- **删除历史会话**
+  - 🗑️ 前端：侧边栏新增删除按钮（Hover 显示），并配合自定义确认弹窗。
+  - 🧩 后端：新增 `DELETE /api/sessions/{id}` 接口，支持级联删除 `ChatSession` 与 `ChatLog`。
+  - ✅ 删除后自动同步更新前端 Store 状态，避免脏数据残留。
 # 📅 2026-01-30 开发进度记录
 ## ✨ 核心体验升级 (Core Experience)
 - **全局轻提示系统 (Global Toast)**

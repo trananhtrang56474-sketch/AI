@@ -6,7 +6,11 @@
 
     <router-view v-slot="{ Component }">
       <transition name="page-fade" mode="out-in">
-        <component :is="Component" />
+        
+        <keep-alive include="ChatPage">
+          <component :is="Component" />
+        </keep-alive>
+        
       </transition>
     </router-view>
   </div>
@@ -39,7 +43,6 @@ import GlobalToast from '@/components/GlobalToast.vue';
   --text-sub:  #718096;
 
   /* --- 🪟 玻璃质感标准 --- */
-  /* 🔧 修复：之前是 0. 导致无效，改为 0.4 (40%不透明度) */
   --glass-bg: rgba(255, 255, 255, 0.4);
   --glass-border: 1px solid rgba(255, 255, 255, 0.6);
   --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
