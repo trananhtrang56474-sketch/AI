@@ -10,7 +10,8 @@ from flask_mail import Message
 
 # 引入配置
 from extensions import db, mail
-from models import User, ChatLog, ChatSession
+# ✨✨✨ 修改点 1：引入 MoodDiary 模型 ✨✨✨
+from models import User, ChatLog, ChatSession, MoodDiary
 
 # 引入核心智能模块
 from llm.qwen_client import QwenClient
@@ -99,7 +100,7 @@ def login():
     return jsonify({"error": "账号或密码错误"}), 401
 
 # ==================================================================
-# 📚 会话管理接口 (获取列表 & ✨✨✨ 删除会话)
+# 📚 会话管理接口 (获取列表 & 删除会话)
 # ==================================================================
 @api_bp.route("/sessions", methods=["GET"])
 def get_sessions():
@@ -108,19 +109,14 @@ def get_sessions():
     sessions = ChatSession.query.filter_by(user_id=uid).order_by(ChatSession.created_at.desc()).all()
     return jsonify([{"id": s.id, "title": s.title, "created_at": s.created_at.strftime("%m-%d %H:%M")} for s in sessions])
 
-# ✨✨✨ 新增：删除会话接口 ✨✨✨
 @api_bp.route('/sessions/<session_id>', methods=['DELETE'])
 def delete_session(session_id):
     try:
-        # 1. 查找会话
         session = ChatSession.query.get(session_id)
         if not session:
             return jsonify({'error': '会话不存在'}), 404
         
-        # 2. 删除关联的消息
         ChatLog.query.filter_by(session_id=session_id).delete()
-        
-        # 3. 删除会话本身
         db.session.delete(session)
         db.session.commit()
         
@@ -223,8 +219,72 @@ def get_chart_data():
         "scores": scores
     })
 
+# ==================================================================
+# 📝 4. 情绪日记接口 (Mood Diary APIs) ✨✨✨ NEW ✨✨✨
+# ==================================================================
+
+# 保存日记
+@api_bp.route('/diaries', methods=['POST'])
+def create_diary():
+    data = request.json
+    user_id = data.get('user_id')
+    content = data.get('content')
+    mood = data.get('mood', 'calm')
+
+    if not user_id or not content:
+        return jsonify({'success': False, 'message': '缺少必要参数'}), 400
+
+    try:
+        new_diary = MoodDiary(
+            user_id=user_id,
+            mood=mood,
+            content=content
+        )
+        db.session.add(new_diary)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'new_diary': new_diary.to_dict()})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# 获取日记列表
+@api_bp.route('/diaries', methods=['GET'])
+def get_diaries():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': '未登录'}), 401
+
+    try:
+        # 按时间倒序排列
+        diaries = MoodDiary.query.filter_by(user_id=user_id).order_by(MoodDiary.created_at.desc()).all()
+        return jsonify({
+            'success': True, 
+            'diaries': [d.to_dict() for d in diaries]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# 删除日记
+@api_bp.route('/diaries/<int:diary_id>', methods=['DELETE'])
+def delete_diary(diary_id):
+    try:
+        diary = MoodDiary.query.get(diary_id)
+        if not diary:
+            return jsonify({'success': False, 'message': '日记不存在'}), 404
+            
+        db.session.delete(diary)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '删除成功'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # ===========================
-# 3. 核心聊天接口
+# 5. 核心聊天接口
 # ===========================
 @api_bp.route("/chat", methods=["POST"])
 def chat():

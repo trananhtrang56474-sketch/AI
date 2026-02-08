@@ -107,20 +107,24 @@ const scrollToBottom = () => {
 };
 
 /* ================= 加载历史数据 ================= */
+// src/pages/ChatPage.vue 里的 loadHistory 函数
 
 const loadHistory = async (sessionId) => {
   try {
     const res = await axios.get(`${API_BASE}/api/history?session_id=${sessionId}`);
 
-    if (res.data.messages && res.data.analysis) {
-      // 存入 Store
+    if (res.data.messages) {
       chatStore.setConversation(sessionId, res.data.messages);
-      analysisStore.updateAnalysis(res.data.analysis);
-    } else if (Array.isArray(res.data)) {
-      chatStore.setConversation(sessionId, res.data);
     }
 
-    // 激活当前会话
+    // ✨✨✨ 关键修改 ✨✨✨
+    if (res.data.analysis) {
+      // 1. 更新当前 UI
+      analysisStore.updateAnalysis(res.data.analysis);
+      // 2. 存入 chatStore 缓存，以便下次切换回来用
+      chatStore.setSessionAnalysis(sessionId, res.data.analysis); 
+    }
+
     chatStore.setActiveSession(sessionId);
     scrollToBottom();
   } catch (e) {
@@ -143,30 +147,36 @@ const fetchChartData = async (sessionId) => {
 };
 
 /* ================= 核心：路由监听 ================= */
+// src/pages/ChatPage.vue 里的 watch 部分
 
 watch(
   () => route.query.session_id,
   async (newId) => {
-    // 1. 如果切到了其他页面，不管
     if (route.path !== '/chat') return;
-
-    // 2. 如果是新对话模式
     if (!newId) {
       chatStore.setActiveSession(null);
+      analysisStore.resetAnalysis(); // 新对话先重置
       return;
     }
 
-    // 3. 告诉 Store 现在的 ID 是多少
     chatStore.setActiveSession(newId);
 
-    // ✨✨✨ 关键优化：如果 Store 里已经有这个会话的数据，直接用！不发请求！ ✨✨✨
+    // ✨✨✨ 关键修改：检查是否有缓存的心理状态 ✨✨✨
+    const cachedAnalysis = chatStore.getSessionAnalysis(newId);
+    if (cachedAnalysis) {
+      console.log("🧠 [Cache] 从缓存恢复心理状态:", cachedAnalysis.emotion);
+      analysisStore.updateAnalysis(cachedAnalysis); // 恢复 UI
+    } else {
+      // 没缓存，重置一下，等 loadHistory 去加载
+      analysisStore.resetAnalysis();
+    }
+
+    // 检查是否有缓存的消息
     if (chatStore.conversations[newId]?.length > 0) {
-      console.log("⚡ [Store] 命中缓存，无需请求");
       scrollToBottom();
       return;
     }
 
-    // 4. 如果没有缓存，才去请求后端
     await loadHistory(newId);
     await fetchChartData(newId);
   },
@@ -241,9 +251,19 @@ const handleCompositeSend = async ({ text, file }) => {
       image_url: imageUrl
     };
 
+   // src/pages/ChatPage.vue 里的 handleCompositeSend 接收回复部分
+
     const res = await axios.post(`${API_BASE}/api/chat`, payload);
 
+    // 1. 更新当前 UI (Store)
     analysisStore.updateAnalysis(res.data);
+    
+    // 2. ✨✨✨ 更新 chatStore 缓存 ✨✨✨
+    // 这样你切走再切回来，状态还是新的
+    const currentSessionId = res.data.session_id || route.query.session_id;
+    if (currentSessionId) {
+      chatStore.setSessionAnalysis(currentSessionId, res.data);
+    }
 
     // 4. 处理新会话 ID 变更
     // 如果之前是新对话，现在后端返回了真正的 session_id
