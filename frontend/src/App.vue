@@ -59,7 +59,8 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
  
   color: var(--text-main);
-  overflow: hidden; /* 防止双重滚动条 */
+  overflow-y: auto; 
+  overflow-x: hidden;
 }
 
 #app { width: 100%; height: 100%; }
@@ -67,7 +68,8 @@ html, body {
 .app-layout {
   position: relative;
   width: 100%; height: 100%;
-  overflow: hidden; 
+ overflow-y: auto; 
+  overflow-x: hidden;
 }
 
 * { box-sizing: border-box; }

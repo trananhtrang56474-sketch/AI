@@ -34,8 +34,8 @@
           <div class="glass-card knowledge-hub slide-in-up" style="animation-delay: 0.1s">
             <div class="card-header">
               <div class="header-title">
-                <span class="icon">🧩</span>
-                <h4>心理锦囊</h4>
+                <span class="icon">🧰</span>
+                <h4>心理工具</h4>
               </div>
               <button class="link-btn" @click="showRandomTip">换一批</button>
             </div>
@@ -66,6 +66,7 @@
                 <h5>深度咨询</h5>
                 <span>解决复杂烦恼</span>
               </div>
+              <span class="arrow-icon">›</span>
             </div>
 
             <div class="glass-card action-item" @click="router.push('/meditation')">
@@ -74,6 +75,7 @@
                 <h5>冥想练习</h5>
                 <span>5分钟放松引导</span>
               </div>
+              <span class="arrow-icon">›</span>
             </div>
 
             <div class="glass-card action-item" @click="router.push('/diary')">
@@ -82,7 +84,18 @@
                 <h5>情绪日记</h5>
                 <span>记录当下心情</span>
               </div>
+              <span class="arrow-icon">›</span>
             </div>
+
+            <div class="glass-card action-item" @click="router.push('/report')">
+              <div class="icon-box info-icon">📊</div>
+              <div class="text">
+                <h5>心理报告</h5>
+                <span>多维状态数据分析</span>
+              </div>
+              <span class="arrow-icon">›</span>
+            </div>
+
           </div>
 
         </div>
@@ -150,12 +163,11 @@ const quotesList = [
 const currentQuote = ref(quotesList[0]);
 
 onMounted(() => {
-  // 随机取一句
   const randomIndex = Math.floor(Math.random() * quotesList.length);
   currentQuote.value = quotesList[randomIndex];
 });
 
-// ================= 3. 心理锦囊数据 =================
+// ================= 3. 心理工具数据 =================
 const allTips = [
   { title: "缓解焦虑", icon: "🧘‍♀️", content: "尝试 '5-4-3-2-1' 着陆法：\n👀 寻找 5 样能看到的东西\n✋ 寻找 4 样能触碰的东西\n👂 寻找 3 样能听到的声音\n👃 寻找 2 样能闻到的气味\n👅 寻找 1 样能尝到的味道\n这能帮你快速回到当下。" },
   { title: "正念呼吸", icon: "🌬️", content: "4-7-8 呼吸法：\n1. 闭嘴，用鼻子吸气，心中默数 4 秒。\n2. 屏住呼吸，默数 7 秒。\n3. 用嘴呼气，发出'呼'的声音，默数 8 秒。\n重复 4 个循环。" },
@@ -165,14 +177,13 @@ const allTips = [
   { title: "停止内耗", icon: "🔋", content: "完成比完美更重要。\n很多时候，我们的焦虑来自于对结果的过度预设。\n试着只关注'当下这一步'，而不是'未来的一百步'。" }
 ];
 
-const visibleTips = ref(allTips.slice(0, 5)); // 默认显示前5个
+const visibleTips = ref(allTips.slice(0, 5)); 
 
 const showRandomTip = () => {
-  // 随机洗牌
   visibleTips.value = [...allTips].sort(() => 0.5 - Math.random()).slice(0, 5);
 };
 
-// ================= 4. 模态框逻辑 (仅用于心理锦囊) =================
+// ================= 4. 模态框逻辑 =================
 const showModal = ref(false);
 const currentTip = ref(null);
 
@@ -199,7 +210,7 @@ const handleAction = (route, mode) => {
 </script>
 
 <style scoped>
-/* 样式部分完全保留，不做任何修改 */
+/* 引入全局样式 */
 @import '../assets/main.css';
 
 .home-container {
@@ -240,8 +251,9 @@ const handleAction = (route, mode) => {
 .left-column, .right-column { display: flex; flex-direction: column; gap: 24px; }
 
 .header-title { display: flex; align-items: center; gap: 8px; }
-.header-title h4 { margin: 0; font-size: 17px; color: var(--text-main); }
-.link-btn { background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 13px; }
+.header-title h4 { margin: 0; font-size: 17px; color: var(--text-main); font-weight: 600;}
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.link-btn { background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 13px; font-weight: 500;}
 
 .daily-quote {
   background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.5) 100%);
@@ -254,58 +266,70 @@ const handleAction = (route, mode) => {
 .topic-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
 .topic-pill {
   padding: 10px 18px; border-radius: 12px;
-  background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.5);
-  font-size: 14px; color: #555; cursor: pointer; transition: 0.2s;
+  background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.8);
+  font-size: 14px; color: #555; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
-.topic-pill:hover { background: #fff; color: var(--primary-color); border-color: var(--primary-color); transform: translateY(-2px); }
-.topic-pill.highlight { background: rgba(var(--primary-rgb), 0.05); color: var(--primary-color); font-weight: 500; }
+.topic-pill:hover { background: #fff; color: var(--primary-color); border-color: var(--primary-color); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.1); }
+.topic-pill.highlight { background: rgba(var(--primary-rgb), 0.05); color: var(--primary-color); font-weight: 600; border-color: transparent;}
 
-.action-list { display: flex; flex-direction: column; gap: 16px; }
+/* === 核心功能操作列表 === */
+.action-list { display: flex; flex-direction: column; gap: 20px; } /* 稍微加大了间距以填充空间 */
 .action-item {
-  display: flex; align-items: center; gap: 16px; padding: 20px; cursor: pointer; background: rgba(255,255,255,0.7);
+  display: flex; align-items: center; padding: 22px; cursor: pointer; background: rgba(255,255,255,0.7);
+  border-radius: 20px; position: relative; overflow: hidden;
 }
 .icon-box {
-  width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px;
+  width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-right: 18px;
 }
 .primary-icon { background: rgba(var(--primary-rgb), 0.1); color: var(--primary-color); }
 .success-icon { background: rgba(82, 196, 26, 0.1); color: var(--success-color); }
 .warning-icon { background: rgba(250, 140, 22, 0.1); color: var(--warning-color); }
+.info-icon { background: rgba(24, 144, 255, 0.1); color: #1890ff; } 
 
-.text h5 { margin: 0 0 4px 0; font-size: 16px; color: var(--text-main); }
+.text h5 { margin: 0 0 6px 0; font-size: 16px; color: var(--text-main); font-weight: 600;}
 .text span { font-size: 13px; color: var(--text-sub); }
 
+.arrow-icon { margin-left: auto; font-size: 24px; color: #cbd5e1; font-weight: 300; transition: transform 0.3s, color 0.3s; }
+.action-item:hover .arrow-icon { color: var(--primary-color); transform: translateX(5px); }
+
+/* 模态框 */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   background: rgba(0, 0, 0, 0.3); z-index: 9999;
   display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);
 }
 .glass-modal {
-  width: 90%; max-width: 480px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px);
+  width: 90%; max-width: 480px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px);
   border-radius: 24px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  position: relative; text-align: center;
+  position: relative; text-align: center; border: 1px solid rgba(255,255,255,0.8);
 }
-.close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: #999; cursor: pointer; }
+.close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 26px; color: #999; cursor: pointer; transition: 0.2s;}
+.close-btn:hover { color: #333; transform: rotate(90deg); }
 .modal-header { margin-bottom: 20px; }
-.modal-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+.modal-icon { font-size: 48px; display: block; margin-bottom: 12px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
 .modal-header h3 { margin: 0; font-size: 22px; color: var(--text-main); }
-.modal-body { text-align: left; background: rgba(255,255,255,0.5); padding: 20px; border-radius: 12px; margin-bottom: 24px; }
+.modal-body { text-align: left; background: rgba(255,255,255,0.6); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.8); }
 .modal-body p { margin: 0 0 8px; font-size: 15px; line-height: 1.6; color: #555; }
 .modal-action-btn {
-  width: 100%; padding: 12px; background: var(--primary-color); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s;
+  width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
-.modal-action-btn:hover { opacity: 0.9; transform: scale(1.02); }
+.modal-action-btn:hover { background: #623c8a; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.4); }
 
+/* 动画 */
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-.slide-in-down { animation: slideDown 0.6s ease-out; }
-.slide-in-up { animation: slideUp 0.6s ease-out backwards; }
-.slide-in-right { animation: slideLeft 0.6s ease-out backwards; }
+.slide-in-down { animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.slide-in-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.slide-in-right { animation: slideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
 @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideLeft { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* 响应式 */
 @media (max-width: 768px) {
   .main-grid { grid-template-columns: 1fr; }
   .hero-section { flex-direction: column; text-align: center; }
