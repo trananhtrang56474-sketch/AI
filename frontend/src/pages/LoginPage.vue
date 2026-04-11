@@ -1,83 +1,77 @@
 <template>
   <div class="login-container">
     
-    <div class="glass-card auth-card" :class="{ 'shake-anim': hasError }">
+    <div class="apple-auth-card" :class="{ 'shake-anim': hasError }">
       
       <div class="card-header">
-        <div class="logo-circle">🧠</div>
-        <h1 class="app-title">AI Counselor</h1>
-        <p class="app-slogan">您的 24 小时专属心理伙伴</p>
+        <div class="logo-icon">⌘</div>
+        <h1 class="app-title">{{ isRegister ? '创建您的账号。' : '登录 AI 心灵伴侣。' }}</h1>
+        <p class="app-slogan">
+          {{ isRegister ? '只需一步，开启内心的平静之旅。' : '欢迎回来，请输入您的凭据。' }}
+        </p>
       </div>
 
-      <div class="form-body">
-        <div class="mode-toggle">
-          <h2 :class="{ active: !isRegister }" @click="switchMode(false)">登录</h2>
-          <span class="divider">/</span>
-          <h2 :class="{ active: isRegister }" @click="switchMode(true)">注册</h2>
+      <div class="segmented-control">
+        <div class="segment" :class="{ active: !isRegister }" @click="switchMode(false)">登录</div>
+        <div class="segment" :class="{ active: isRegister }" @click="switchMode(true)">注册</div>
+        <div class="active-bg" :class="isRegister ? 'right' : 'left'"></div>
+      </div>
+
+      <form @submit.prevent="handleSubmit" class="auth-form">
+        
+        <div class="input-group">
+          <input 
+            v-model="username" 
+            type="text" 
+            class="apple-input"
+            :class="{ 'input-error': errorField === 'username' }"
+            placeholder="邮箱地址" 
+            @focus="clearError"
+          />
         </div>
 
-        <form @submit.prevent="handleSubmit" class="auth-form">
-          
-          <div class="input-group">
-            <div class="input-box">
-              <span class="icon">📧</span>
-              <input 
-                v-model="username" 
-                type="text" 
-                :placeholder="isRegister ? '请输入常用邮箱 (用于接收验证码)' : '请输入邮箱 / 用户名'" 
-                :class="{ 'input-error': errorField === 'username' }"
-                @focus="clearError"
-              />
-            </div>
+        <transition name="expand">
+          <div v-if="isRegister" class="input-group inline-group">
+            <input 
+              v-model="verifyCode" 
+              type="text" 
+              class="apple-input code-input"
+              :class="{ 'input-error': errorField === 'code' }"
+              placeholder="验证码" 
+              @focus="clearError"
+            />
+            <button type="button" class="action-text-btn" :disabled="timer > 0" @click="sendCode">
+              {{ timer > 0 ? `${timer}s 后重试` : '获取验证码' }}
+            </button>
           </div>
+        </transition>
 
-          <transition name="slide-fade">
-            <div v-if="isRegister" class="input-group">
-              <div class="input-box code-box">
-                <span class="icon">🔢</span>
-                <input 
-                  v-model="verifyCode" 
-                  type="text" 
-                  placeholder="邮件验证码" 
-                  @focus="clearError"
-                />
-                <button type="button" class="code-btn" :disabled="timer > 0" @click="sendCode">
-                  {{ timer > 0 ? `${timer}s后重发` : '获取验证码' }}
-                </button>
-              </div>
-            </div>
-          </transition>
+        <div class="input-group">
+          <input 
+            v-model="password" 
+            type="password" 
+            class="apple-input"
+            :class="{ 'input-error': errorField === 'password' }"
+            placeholder="密码" 
+            @focus="clearError"
+          />
+        </div>
 
-          <div class="input-group">
-            <div class="input-box">
-              <span class="icon">🔒</span>
-              <input 
-                v-model="password" 
-                type="password" 
-                placeholder="请输入密码" 
-                :class="{ 'input-error': errorField === 'password' }"
-                @focus="clearError"
-              />
-            </div>
+        <transition name="fade">
+          <div v-if="errorMsg" class="error-tip">
+            {{ errorMsg }}
           </div>
+        </transition>
 
-          <transition name="fade">
-            <div v-if="errorMsg" class="error-tip">
-              <span class="error-icon">⚠️</span> {{ errorMsg }}
-            </div>
-          </transition>
+        <button type="submit" class="apple-primary-btn" :disabled="loading">
+          <span v-if="loading" class="spinner"></span>
+          <span v-else>{{ isRegister ? '继续 ➔' : '登录' }}</span>
+        </button>
 
-          <button type="submit" class="submit-btn pulse-hover" :disabled="loading">
-            <span v-if="loading" class="spinner"></span>
-            <span v-else>{{ isRegister ? '✨ 立即注册' : '🚀 进入空间' }}</span>
-          </button>
-
-        </form>
-      </div>
+      </form>
 
       <div class="card-footer">
-        <p v-if="!isRegister">还没有账号？ <span class="link" @click="switchMode(true)">去注册</span></p>
-        <p v-else>已有账号？ <span class="link" @click="switchMode(false)">直接登录</span></p>
+        <a href="#" class="forgot-link" v-if="!isRegister">忘记密码？</a>
       </div>
 
     </div>
@@ -128,15 +122,12 @@ const clearError = () => {
   hasError.value = false;
 };
 
-// ✨ 升级版错误处理：同时触发 shake 动画和 Toast
+// ✨ 升级版错误处理
 const triggerError = (msg, field = '') => {
-  // 界面内红框提示
   errorMsg.value = msg;
   errorField.value = field;
   hasError.value = true;
   setTimeout(() => { hasError.value = false; }, 500); 
-  
-  // ✨ 全局胶囊提示
   showToast(msg, 'error');
 };
 
@@ -154,7 +145,6 @@ const sendCode = async () => {
     }, 1000);
 
     await axios.post('http://127.0.0.1:8080/api/send-code', { email: username.value });
-    // ✨ 成功提示
     showToast("验证码已发送至您的邮箱", 'success');
   } catch (e) {
     timer.value = 0;
@@ -163,7 +153,7 @@ const sendCode = async () => {
 };
 
 const handleSubmit = async () => {
-  if (!username.value.trim()) return triggerError("请输入邮箱/用户名", 'username');
+  if (!username.value.trim()) return triggerError("请输入邮箱地址", 'username');
   if (isRegister.value && !verifyCode.value) return triggerError("请输入验证码", 'code');
   if (!password.value) return triggerError("请输入密码", 'password');
   
@@ -189,11 +179,9 @@ const handleSubmit = async () => {
       localStorage.setItem('username', username.value);
     }
 
-    // ✨✨✨ 登录成功，显示欢迎提示
     const welcomeText = isRegister.value ? "注册成功，欢迎加入！" : `欢迎回来，${username.value}`;
     showToast(welcomeText, 'success');
     
-    // 跳转
     router.push('/home'); 
 
   } catch (err) {
@@ -206,89 +194,120 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* === 1. 容器 === */
 .login-container {
-  height: 100vh; width: 100%; display: flex; justify-content: center; align-items: center; padding: 20px; background: transparent; 
+  height: 100vh; width: 100%; display: flex; justify-content: center; align-items: center; 
+  padding: 20px; font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* === 2. 玻璃卡片 === */
-.glass-card {
-  width: 100%; max-width: 420px; 
-  background: var(--glass-bg); 
-  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-  border-radius: 24px; border: var(--glass-border);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.2) inset; 
-  padding: 40px; display: flex; flex-direction: column; align-items: center;
+/* === 2. 苹果风毛玻璃卡片 === */
+.apple-auth-card {
+  width: 100%; max-width: 400px; 
+  background: rgba(255, 255, 255, 0.7); 
+  backdrop-filter: saturate(180%) blur(40px); -webkit-backdrop-filter: saturate(180%) blur(40px);
+  border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.8); 
+  padding: 48px 40px; display: flex; flex-direction: column; 
   position: relative; overflow: hidden;
-  animation: floatUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: scaleUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes floatUp { from { opacity: 0; transform: translateY(40px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes scaleUp { 
+  from { opacity: 0; transform: translateY(20px) scale(0.98); } 
+  to { opacity: 1; transform: translateY(0) scale(1); } 
+}
 
 /* === 3. Header === */
-.card-header { text-align: center; margin-bottom: 30px; }
-.logo-circle {
-  width: 64px; height: 64px; background: var(--primary-gradient); border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; font-size: 32px;
-  margin: 0 auto 16px; box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.4);
-  animation: float 6s ease-in-out infinite;
+.card-header { text-align: center; margin-bottom: 32px; }
+.logo-icon {
+  font-size: 36px; margin-bottom: 12px; color: #1d1d1f;
 }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-.app-title { margin: 0; font-size: 24px; color: var(--text-main); font-weight: 700; letter-spacing: 0.5px; }
-.app-slogan { margin: 6px 0 0; font-size: 14px; color: var(--text-sub); }
+.app-title { margin: 0; font-size: 28px; color: #1d1d1f; font-weight: 700; letter-spacing: -0.5px; }
+.app-slogan { margin: 8px 0 0; font-size: 15px; color: #86868b; }
 
-/* === 4. 表单 === */
-.form-body { width: 100%; }
-.mode-toggle { display: flex; justify-content: center; align-items: center; gap: 16px; margin-bottom: 24px; }
-.mode-toggle h2 { margin: 0; font-size: 18px; cursor: pointer; color: var(--text-sub); transition: 0.3s; }
-.mode-toggle h2.active { color: var(--primary-color); font-weight: 700; transform: scale(1.05); }
-.divider { color: #cbd5e0; font-size: 14px; }
-
-/* === 5. 输入框 === */
-.input-group { margin-bottom: 16px; }
-.input-box {
-  position: relative; background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8);
-  border-radius: 12px; transition: all 0.3s; display: flex; align-items: center;
+/* === 4. iOS 风格分段控制器 === */
+.segmented-control {
+  display: flex; position: relative; background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px; padding: 3px; margin-bottom: 32px;
 }
-.input-box:focus-within { background: #fff; border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1); }
-.icon { padding: 0 12px; font-size: 18px; color: var(--text-sub); }
-input { width: 100%; padding: 14px 12px 14px 0; border: none; background: transparent; outline: none; font-size: 15px; color: var(--text-main); }
-.input-error { border-color: var(--danger-color) !important; background: #fff1f0 !important; }
-
-.code-box { padding-right: 6px; }
-.code-btn {
-  background: rgba(var(--primary-rgb), 0.1); color: var(--primary-color);
-  border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: 0.2s;
+.segment {
+  flex: 1; text-align: center; padding: 8px 0; font-size: 14px; font-weight: 500;
+  color: #1d1d1f; cursor: pointer; z-index: 2; transition: color 0.3s;
 }
-.code-btn:hover:not(:disabled) { background: var(--primary-color); color: #fff; }
-.code-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.submit-btn {
-  width: 100%; padding: 14px; margin-top: 10px; background: var(--primary-gradient);
-  border: none; border-radius: 12px; color: white; font-size: 16px; font-weight: 600;
-  cursor: pointer; box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.3);
-  transition: all 0.2s; display: flex; justify-content: center; align-items: center;
+.segment.active { color: #1d1d1f; font-weight: 600; }
+.active-bg {
+  position: absolute; top: 3px; bottom: 3px; width: calc(50% - 3px);
+  background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 1;
 }
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(var(--primary-rgb), 0.4); }
-.submit-btn:active { transform: scale(0.98); }
-.submit-btn:disabled { background: #cbd5e0; cursor: not-allowed; box-shadow: none; }
+.active-bg.left { transform: translateX(0); }
+.active-bg.right { transform: translateX(100%); }
 
+/* === 5. 极致极简输入框 === */
+.auth-form { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+
+.input-group { position: relative; }
+.apple-input {
+  width: 100%; padding: 16px 16px; 
+  background: rgba(0, 0, 0, 0.03); border: 1px solid transparent;
+  border-radius: 12px; font-size: 16px; color: #1d1d1f;
+  transition: all 0.3s ease; box-sizing: border-box; outline: none;
+}
+.apple-input::placeholder { color: #86868b; }
+.apple-input:focus {
+  background: #fff; border-color: #0071e3; 
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+}
+.input-error { 
+  border-color: #ff3b30 !important; background: #fff0f0 !important; 
+}
+.input-error:focus { box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.15) !important; }
+
+/* 验证码行内布局 */
+.inline-group { display: flex; gap: 12px; align-items: center; }
+.code-input { flex: 1; }
+.action-text-btn {
+  background: none; border: none; color: #0071e3; font-size: 15px; font-weight: 500;
+  cursor: pointer; padding: 0 8px; white-space: nowrap; transition: opacity 0.2s;
+}
+.action-text-btn:hover:not(:disabled) { opacity: 0.7; }
+.action-text-btn:disabled { color: #86868b; cursor: not-allowed; }
+
+/* === 6. 按钮 === */
+.apple-primary-btn {
+  width: 100%; padding: 16px; margin-top: 8px; background: #0071e3;
+  border: none; border-radius: 12px; color: white; font-size: 17px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center;
+}
+.apple-primary-btn:hover { background: #0077ed; transform: scale(1.02); }
+.apple-primary-btn:active { transform: scale(0.98); }
+.apple-primary-btn:disabled { background: #a1cffd; cursor: not-allowed; transform: none; }
+
+/* === 7. 错误提示与底部链接 === */
 .error-tip {
-  font-size: 13px; color: var(--danger-color); margin-bottom: 16px;
-  background: rgba(255, 77, 79, 0.1); padding: 8px 12px; border-radius: 8px;
-  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: #ff3b30; text-align: center;
+  font-weight: 500; margin-top: -8px; margin-bottom: 4px;
 }
-.card-footer { margin-top: 24px; font-size: 14px; color: var(--text-sub); }
-.link { color: var(--primary-color); font-weight: 600; cursor: pointer; margin-left: 4px; }
-.link:hover { text-decoration: underline; }
+.card-footer { margin-top: 24px; text-align: center; }
+.forgot-link { color: #0071e3; font-size: 14px; text-decoration: none; font-weight: 500; }
+.forgot-link:hover { text-decoration: underline; }
 
-.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+/* === 8. 动画 === */
+.spinner { 
+  width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.4); 
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; 
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-.shake-anim { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } }
 
-.slide-fade-enter-active { transition: all 0.3s ease-out; }
-.slide-fade-leave-active { transition: all 0.2s ease-in; position: absolute; }
-.slide-fade-enter-from, .slide-fade-leave-to { transform: translateY(-10px); opacity: 0; }
+.shake-anim { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+/* 展开动画：避免突兀地闪现 */
+.expand-enter-active, .expand-leave-active { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; max-height: 60px; opacity: 1; }
+.expand-enter-from, .expand-leave-to { max-height: 0; opacity: 0; margin-bottom: -16px; transform: translateY(-10px); }
+
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

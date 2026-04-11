@@ -97,7 +97,7 @@ if __name__ == '__main__':
         print("\n正在停止服务...")
     finally:
         if backend_process:
-            backend_process.terminate()
+            backend_process.terminate()     
         if frontend_process:
             frontend_process.terminate()
         print("👋 服务已停止。")

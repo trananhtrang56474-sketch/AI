@@ -20,7 +20,7 @@
         ]"
       >
         <div class="avatar">
-          <img v-if="msg.sender === 'ai' || msg.sender === 'assistant'" src="https://api.iconify.design/noto:robot.svg" alt="AI" />
+          <img v-if="msg.sender === 'ai' || msg.sender === 'assistant'" src="https://api.iconify.design/noto:sunflower.svg" alt="AI" />
           <img v-else src="https://api.iconify.design/noto:person-taking-bath-light-skin-tone.svg" alt="User" />
         </div>
 
@@ -135,9 +135,10 @@ watch(() => props.messages, () => { scrollToBottom(); }, { deep: true, immediate
 .message-row { display: flex; margin-bottom: 24px; align-items: flex-start; gap: 14px; }
 .message-user { flex-direction: row-reverse; }
 
-/* 头像 */
+/* ✨ 头像容器优化：稍微加大了图标显示比例，让向日葵更饱满 */
 .avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.08); flex-shrink: 0; overflow: hidden; border: 2px solid rgba(255,255,255,0.9); }
-.avatar img { width: 70%; height: 70%; object-fit: contain; }
+.avatar img { width: 75%; height: 75%; object-fit: contain; transition: transform 0.3s; }
+.avatar:hover img { transform: scale(1.1); } /* 增加了一个悬浮放大的小动画 */
 
 /* 气泡容器 */
 .bubble-container { display: flex; flex-direction: column; max-width: 70%; }
@@ -179,36 +180,11 @@ watch(() => props.messages, () => { scrollToBottom(); }, { deep: true, immediate
   overflow: hidden;
 }
 
-/* === ✨ 任务一：灵动的打字光标样式 === */
-.typing-indicator { 
-  display: flex; 
-  align-items: center; 
-  gap: 6px; 
-  padding: 2px 4px; /* 稍微紧凑一点 */
-}
-
-.typing-text {
-  font-size: 13px;
-  color: var(--text-sub);
-  font-weight: 500;
-}
-
-/* 那个闪烁的小方块 */
-.typing-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  background-color: var(--primary-color); /* 跟随主题色变色 */
-  border-radius: 2px;
-  animation: blink 1s step-end infinite;
-}
-
-/* 闪烁动画 */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
+/* === 打字光标样式 === */
+.typing-indicator { display: flex; align-items: center; gap: 6px; padding: 2px 4px; }
+.typing-text { font-size: 13px; color: var(--text-sub); font-weight: 500; }
+.typing-cursor { display: inline-block; width: 8px; height: 16px; background-color: var(--primary-color); border-radius: 2px; animation: blink 1s step-end infinite; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
 /* === 5. 其他样式 === */
 .chat-image {

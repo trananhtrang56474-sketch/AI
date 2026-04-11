@@ -52,5 +52,7 @@ class ChatLog(db.Model):
     # ✨✨✨ 【新增】心理健康评分 (0-100) ✨✨✨
     # 默认 60 分 (对应 Valence=0 的平静状态)
     emotion_score = db.Column(db.Integer, default=60)
-    
+    # ✨ 新增的两个底层心理学维度字段
+    valence = db.Column(db.Integer, nullable=True, default=5)
+    arousal = db.Column(db.Integer, nullable=True, default=3)
     created_at = db.Column(db.DateTime, default=datetime.now)

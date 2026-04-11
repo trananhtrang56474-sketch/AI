@@ -4,336 +4,437 @@
       
       <section class="hero-section glass-card slide-in-down">
         <div class="hero-content">
-          <div class="greeting-box">
-            <span class="weather-icon">{{ timeIcon }}</span>
-            <h1>{{ greeting }}，{{ username }}</h1>
+          <div class="greeting-row">
+            <div class="greeting-box">
+              <span class="weather-icon">{{ timeIcon }}</span>
+              <h1>{{ greeting }}，{{ username }}</h1>
+            </div>
+            <div class="mood-badge">
+              <span class="pulse-dot"></span>
+              <span>{{ currentStatus }}</span>
+            </div>
           </div>
+          
           <p class="subtitle">这里是你的心灵栖息地。所有的情绪，都值得被看见。</p>
           
-          <button class="primary-btn pulse-effect" @click="handleAction('chat', 'start')">
-            <span class="btn-icon">✨</span> 开启一次心灵对话
-          </button>
+          <div class="interactive-area">
+            <div class="ai-care-box cloud-bubble">
+              <span class="sparkle" :class="{ 'spin-anim': isMessageLoading }">✨</span>
+              <div class="care-text">
+                <strong class="gradient-title">AI 观测寄语：</strong>
+                <transition name="fade" mode="out-in">
+                  <span :key="displayedAiCareMessage">{{ displayedAiCareMessage }}</span>
+                </transition>
+              </div>
+            </div>
+
+            <div class="mood-checkin-box" v-if="!hasCheckedIn">
+              <span class="mood-label">你此刻感觉如何？</span>
+              <div class="mood-emojis">
+                <button 
+                  v-for="(mood, index) in moodOptions" 
+                  :key="index"
+                  class="mood-btn"
+                  :title="mood.label"
+                  @click="recordMood(mood.value, mood.label)"
+                >
+                  {{ mood.icon }}
+                </button>
+              </div>
+            </div>
+            
+            <div class="mood-checkin-success" v-else>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>今日情绪已记录，感谢你的倾诉与分享。</span>
+            </div>
+
+            <div class="action-btn-group">
+              <button class="continue-btn pulse-effect" @click="goToChat" :disabled="isNavigating">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+                {{ isNavigating ? '正在前往...' : '去和 AI 聊聊' }}
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="hero-decoration">🌱</div>
+        
+        <div class="hero-decoration floating-anim">
+          <svg viewBox="0 0 24 24" width="100" height="100" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22V12"></path>
+            <path d="M12 12C12 12 9 7 4 5"></path>
+            <path d="M12 12C12 12 15 7 20 5"></path>
+            <path d="M12 16C12 16 9.5 13 6 12"></path>
+            <path d="M12 16C12 16 14.5 13 18 12"></path>
+          </svg>
+        </div>
       </section>
 
       <div class="main-grid">
         
-        <div class="left-column">
+        <div class="glass-card daily-quote slide-in-up" @click="changeQuote" title="点击切换金句">
+          <div class="quote-bg-icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,22C12,22 4,16 4,10C4,6 7.5,3 12,5C16.5,3 20,6 20,10C20,16 12,22 12,22Z" opacity="0.05"/></svg>
+          </div>
           
-          <div class="glass-card daily-quote slide-in-up">
+          <div class="quote-header">
             <span class="quote-icon">❝</span>
+            <span class="refresh-hint">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              换一句
+            </span>
+          </div>
+
+          <div class="quote-content-wrapper">
             <transition name="fade" mode="out-in">
-              <div :key="currentQuote.text">
+              <div :key="currentQuote.text" class="quote-inner">
                 <p class="quote-text">{{ currentQuote.text }}</p>
                 <span class="quote-author">—— {{ currentQuote.author }}</span>
               </div>
             </transition>
           </div>
 
-          <div class="glass-card knowledge-hub slide-in-up" style="animation-delay: 0.1s">
-            <div class="card-header">
-              <div class="header-title">
-                <span class="icon">🧰</span>
-                <h4>心理工具</h4>
-              </div>
-              <button class="link-btn" @click="showRandomTip">换一批</button>
+          <div class="quote-footer">
+            <div class="date-box">
+              <span class="day">{{ currentDay }}</span>
+              <span class="date">{{ currentDate }}</span>
             </div>
-            <div class="topic-grid">
-              <div 
-                v-for="tip in visibleTips" 
-                :key="tip.title" 
-                class="topic-pill"
-                @click="openTipModal(tip)"
-              >
-                {{ tip.icon }} {{ tip.title }}
-              </div>
-              
-              <div class="topic-pill highlight" @click="router.push('/article/1')">
-                ✨ 探索更多
-              </div>
-            </div>
+            <div class="footer-tag">每日寄语</div>
           </div>
         </div>
-        
-        <div class="right-column slide-in-right">
+
+        <div class="glass-card trend-card slide-in-up" style="animation-delay: 0.1s">
+          <div class="card-header">
+            <div class="header-title">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              <h4>近期情绪波动</h4>
+            </div>
+          </div>
           
-          <div class="action-list">
-            
-            <div class="glass-card action-item" @click="handleAction('chat', 'deep')">
-              <div class="icon-box primary-icon">💬</div>
-              <div class="text">
-                <h5>深度咨询</h5>
-                <span>解决复杂烦恼</span>
-              </div>
-              <span class="arrow-icon">›</span>
-            </div>
-
-            <div class="glass-card action-item" @click="router.push('/meditation')">
-              <div class="icon-box success-icon">🧘</div>
-              <div class="text">
-                <h5>冥想练习</h5>
-                <span>5分钟放松引导</span>
-              </div>
-              <span class="arrow-icon">›</span>
-            </div>
-
-            <div class="glass-card action-item" @click="router.push('/diary')">
-              <div class="icon-box warning-icon">📝</div>
-              <div class="text">
-                <h5>情绪日记</h5>
-                <span>记录当下心情</span>
-              </div>
-              <span class="arrow-icon">›</span>
-            </div>
-
-            <div class="glass-card action-item" @click="router.push('/report')">
-              <div class="icon-box info-icon">📊</div>
-              <div class="text">
-                <h5>心理报告</h5>
-                <span>多维状态数据分析</span>
-              </div>
-              <span class="arrow-icon">›</span>
-            </div>
-
+          <div class="chart-wrapper">
+            <EmotionChart :chartData="homeChartData" />
           </div>
-
         </div>
       </div>
+
     </div>
-
-    <transition name="modal-fade">
-      <div v-if="showModal" class="modal-overlay" @click="closeModal">
-        <div class="glass-modal tip-modal" @click.stop>
-          <button class="close-btn" @click="closeModal">×</button>
-          <div class="modal-header">
-            <span class="modal-icon">{{ currentTip?.icon }}</span>
-            <h3>{{ currentTip?.title }}</h3>
-          </div>
-          <div class="modal-body">
-            <p v-for="(line, index) in formatContent(currentTip?.content)" :key="index">
-              {{ line }}
-            </p>
-          </div>
-          <button class="modal-action-btn" @click="handleAction('chat', 'practice')">
-            让 AI 带我练习
-          </button>
-        </div>
-      </div>
-    </transition>
-
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios'; 
 import { authStore } from '../store.js'; 
+import { showToast } from '../utils/toast.js'; 
+import EmotionChart from '../components/EmotionChart.vue';
 
 const router = useRouter();
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// ================= 1. 动态问候语逻辑 =================
+// ================= 1. 基础 UI 与状态 =================
 const hour = new Date().getHours();
 const username = computed(() => authStore.username || '朋友');
-
 const greeting = computed(() => {
   if (hour < 5) return '夜深了';
-  if (hour < 9) return '早上好';
-  if (hour < 12) return '上午好';
-  if (hour < 14) return '中午好';
+  if (hour < 12) return '早上好';
   if (hour < 18) return '下午好';
   return '晚上好';
 });
+const timeIcon = computed(() => hour < 6 ? '🌙' : hour < 18 ? '☀️' : '✨');
 
-const timeIcon = computed(() => {
-  if (hour < 6) return '🌙';
-  if (hour < 18) return '☀️';
-  return '✨';
+const currentDate = computed(() => {
+  const d = new Date();
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+});
+const currentDay = computed(() => {
+  const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  return days[new Date().getDay()];
 });
 
-// ================= 2. 每日治愈金句数据 =================
+const currentStatus = ref("平稳放松"); 
+
+// ================= 2. 聊天与打卡交互 =================
+const isNavigating = ref(false);
+const goToChat = async () => {
+  if (isNavigating.value) return;
+  isNavigating.value = true;
+  try {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) { router.push('/login'); return; }
+    const res = await axios.get(`${API_BASE}/api/sessions?user_id=${userId}`);
+    if (res.data && res.data.length > 0) {
+      router.push(`/chat?session_id=${res.data[0].id}`);
+    } else {
+      router.push('/chat');
+    }
+  } catch (error) { router.push('/chat'); } 
+  finally { isNavigating.value = false; }
+};
+
+const hasCheckedIn = ref(false);
+const moodOptions = [
+  { icon: '😄', label: '极好', value: 90 },
+  { icon: '🙂', label: '平静', value: 70 },
+  { icon: '😐', label: '一般', value: 50 },
+  { icon: '😔', label: '低落', value: 30 },
+  { icon: '😫', label: '焦虑', value: 10 }
+];
+
+const recordMood = async (val, label) => {
+  try {
+    hasCheckedIn.value = true;
+    currentStatus.value = label; 
+    showToast('打卡记录成功！', 'success');
+    fetchHomeChartData();
+  } catch (error) { console.error("情绪打卡失败", error); }
+};
+
+// ================= 3. AI 寄语与打字机 =================
+const isMessageLoading = ref(true);
+const displayedAiCareMessage = ref(""); 
+let typewriterInterval = null;
+
+const typeMessage = (message) => {
+  if (typewriterInterval) clearInterval(typewriterInterval);
+  displayedAiCareMessage.value = "";
+  let currentIdx = 0;
+  typewriterInterval = setInterval(() => {
+    if (currentIdx < message.length) {
+      displayedAiCareMessage.value += message[currentIdx];
+      currentIdx++;
+    } else {
+      clearInterval(typewriterInterval);
+    }
+  }, 40); 
+};
+
+const fetchAiCareMessage = async () => {
+  isMessageLoading.value = true;
+  let fullMessage = "";
+  try {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) { fullMessage = "静下心来，开启你的倾诉之旅吧。"; return; }
+    const res = await axios.post(`${API_BASE}/api/chat`, {
+      user_id: userId, message: "请写一句治愈寄语", is_silent: true 
+    });
+    fullMessage = res.data.reply || "今天也是充满希望的一天。";
+  } catch (error) {
+    fullMessage = "所有的情绪都是暂时的，给自己一点耐心。";
+  } finally {
+    isMessageLoading.value = false;
+    typeMessage(fullMessage);
+  }
+};
+
+// ================= 4. 每日金句库 =================
 const quotesList = [
   { text: "接纳自己的不完美，是爱自己的开始。", author: "每日治愈" },
   { text: "万物皆有裂痕，那是光照进来的地方。", author: "莱昂纳德·科恩" },
   { text: "允许一切发生，你就是那个强大的观察者。", author: "海灵格" },
-  { text: "生活不可能像你想象得那么好，但也不会像你想象得那么糟。", author: "莫泊桑" },
+  { text: "慢慢来，谁还没有一个努力的过程。", author: "治愈君" },
   { text: "你必须要精力充沛，才能抵挡世俗的万千琐事。", author: "查理·芒格" },
-  { text: "慢慢来，谁还没有一个努力的过程。", author: "治愈君" }
+  { text: "生活不可能像你想象得那么好，但也不会像你想象得那么糟。", author: "莫泊桑" },
+  { text: "当你的心定下来，外界的喧嚣就成了背景音。", author: "林清玄" },
+  { text: "别总是回头看，前面的风景更值得期待。", author: "匿名" },
+  { text: "疲惫的时候就停下来休息，这不是放弃，是蓄力。", author: "心理关怀" },
+  { text: "即使是很小的进步，也是在向着光亮的地方走去。", author: "治愈君" },
+  { text: "去爱那些对你温柔的事物，包括你自己。", author: "匿名" },
+  { text: "没有跨不过去的黑夜，只有未曾迎来的黎明。", author: "每日治愈" }
 ];
 const currentQuote = ref(quotesList[0]);
 
+const changeQuote = () => {
+  let newIndex;
+  do {
+    newIndex = Math.floor(Math.random() * quotesList.length);
+  } while (quotesList[newIndex].text === currentQuote.value.text); 
+  currentQuote.value = quotesList[newIndex];
+};
+
+// ================= 5. 图表数据加载 =================
+const homeChartData = ref({ dates: [], scores: [] });
+
+const fetchHomeChartData = async () => {
+  try {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return;
+    const res = await axios.get(`${API_BASE}/api/chart-data?user_id=${userId}`);
+    if (res.data && res.data.dates) {
+      homeChartData.value = res.data;
+      // ✨ 去掉了原先用于头部统计的分数计算代码，保持纯净
+    }
+  } catch (error) { console.error("图表加载失败", error); }
+};
+
 onMounted(() => {
-  const randomIndex = Math.floor(Math.random() * quotesList.length);
-  currentQuote.value = quotesList[randomIndex];
+  currentQuote.value = quotesList[Math.floor(Math.random() * quotesList.length)];
+  fetchHomeChartData();
+  fetchAiCareMessage(); 
 });
-
-// ================= 3. 心理工具数据 =================
-const allTips = [
-  { title: "缓解焦虑", icon: "🧘‍♀️", content: "尝试 '5-4-3-2-1' 着陆法：\n👀 寻找 5 样能看到的东西\n✋ 寻找 4 样能触碰的东西\n👂 寻找 3 样能听到的声音\n👃 寻找 2 样能闻到的气味\n👅 寻找 1 样能尝到的味道\n这能帮你快速回到当下。" },
-  { title: "正念呼吸", icon: "🌬️", content: "4-7-8 呼吸法：\n1. 闭嘴，用鼻子吸气，心中默数 4 秒。\n2. 屏住呼吸，默数 7 秒。\n3. 用嘴呼气，发出'呼'的声音，默数 8 秒。\n重复 4 个循环。" },
-  { title: "认知重构", icon: "🧠", content: "当你产生负面想法时，问自己三个问题：\n1. 我有证据支持这个想法吗？\n2. 有没有其他可能的解释？\n3. 即使这是真的，情况真的有那么糟吗？" },
-  { title: "人际边界", icon: "🚧", content: "学会说'不'是自爱的表现。\n不需要为拒绝别人而感到内疚。你的感受和需求同样重要。\n温和而坚定地表达你的底线。" },
-  { title: "助眠白噪音", icon: "💤", content: "睡不着时，试着想象自己是一块在阳光下慢慢融化的黄油，从头顶开始，放松额头、眼睛、下巴、肩膀...\n感受身体沉入床垫。" },
-  { title: "停止内耗", icon: "🔋", content: "完成比完美更重要。\n很多时候，我们的焦虑来自于对结果的过度预设。\n试着只关注'当下这一步'，而不是'未来的一百步'。" }
-];
-
-const visibleTips = ref(allTips.slice(0, 5)); 
-
-const showRandomTip = () => {
-  visibleTips.value = [...allTips].sort(() => 0.5 - Math.random()).slice(0, 5);
-};
-
-// ================= 4. 模态框逻辑 =================
-const showModal = ref(false);
-const currentTip = ref(null);
-
-const openTipModal = (tip) => {
-  currentTip.value = tip;
-  showModal.value = true;
-};
-
-const closeModal = () => {
-  showModal.value = false;
-};
-
-const formatContent = (text) => {
-  return text ? text.split('\n') : [];
-};
-
-// ================= 5. 通用跳转逻辑 =================
-const handleAction = (route, mode) => {
-  if (route === 'chat') {
-    router.push('/chat');
-    closeModal();
-  }
-};
 </script>
 
 <style scoped>
-/* 引入全局样式 */
 @import '../assets/main.css';
 
 .home-container {
+  --primary-color: #7b61ff; 
+  --primary-rgb: 123, 97, 255;
+  --primary-gradient: linear-gradient(135deg, #9b84ff 0%, #6343ed 100%);
+  --text-main: #334155; 
+  --text-sub: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+
   min-height: 100%; position: relative; overflow-x: hidden;
+  background: radial-gradient(circle at 10% 10%, rgba(123, 97, 255, 0.08) 0%, #e0f2fe 50%, rgba(123, 97, 255, 0.05) 100%);
+  padding-bottom: 40px;
 }
 
-.content-wrapper {
-  position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: 40px 20px;
-}
+.content-wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 40px 20px 0; }
 
 .glass-card {
-  background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border: var(--glass-border); border-radius: 20px; padding: 24px;
   box-shadow: var(--glass-shadow); transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
 }
 .glass-card:hover {
-  transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08); background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-3px); box-shadow: 0 12px 40px rgba(123, 97, 255, 0.12); background: rgba(255, 255, 255, 0.85);
 }
 
+/* --- 1. 顶部 Hero 区 --- */
 .hero-section {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
-  background: linear-gradient(120deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 30px; position: relative; overflow: hidden;
+  background: linear-gradient(-45deg, rgba(255,255,255,0.9), rgba(224, 242, 254, 0.6), rgba(255,255,255,0.9));
+  background-size: 400% 400%; animation: gradientBG 15s ease infinite;
 }
-.greeting-box { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+@keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+.hero-content { flex: 1; z-index: 2; }
+
+.greeting-row { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+.greeting-box { display: flex; align-items: center; gap: 10px; }
 .greeting-box h1 { margin: 0; font-size: 26px; color: var(--text-main); letter-spacing: 0.5px; }
 .weather-icon { font-size: 28px; }
-.subtitle { margin: 0 0 24px 0; color: var(--text-sub); font-size: 15px; }
-.hero-decoration { font-size: 60px; opacity: 0.8; animation: float 6s ease-in-out infinite; }
 
-.primary-btn {
-  background: var(--primary-gradient); color: white; border: none; padding: 12px 32px; border-radius: 50px;
-  font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
-  display: flex; align-items: center; gap: 8px; transition: all 0.3s;
+.mood-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #059669; padding: 4px 14px; border-radius: 50px;
+  font-size: 13px; font-weight: 600;
 }
-.primary-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4); }
+.pulse-dot {
+  width: 8px; height: 8px; background: #10b981; border-radius: 50%;
+  box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+  animation: pulseGreen 2s infinite;
+}
+@keyframes pulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
 
-.main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
-.left-column, .right-column { display: flex; flex-direction: column; gap: 24px; }
+.subtitle { margin: 0 0 24px 0; color: var(--text-sub); font-size: 15px; }
 
-.header-title { display: flex; align-items: center; gap: 8px; }
-.header-title h4 { margin: 0; font-size: 17px; color: var(--text-main); font-weight: 600;}
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.link-btn { background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 13px; font-weight: 500;}
+.hero-decoration { position: absolute; right: 20px; top: 20px; width: 100px; height: 100px; color: var(--primary-color); opacity: 0.15; z-index: 1; }
+.floating-anim { animation: float 6s ease-in-out infinite; }
+
+.interactive-area { display: flex; flex-direction: column; gap: 16px; max-width: 600px; position: relative; z-index: 2; }
+.ai-care-box { display: flex; align-items: flex-start; gap: 10px; background: rgba(123, 97, 255, 0.06); padding: 16px 20px; border-radius: 16px; border: 1px solid rgba(123, 97, 255, 0.1); position: relative; }
+.ai-care-box::before { content: ''; position: absolute; left: 0; top: 16px; bottom: 16px; width: 4px; border-radius: 0 4px 4px 0; background: var(--primary-gradient); }
+.sparkle { font-size: 16px; margin-top: 2px; }
+.spin-anim { animation: slowSpin 2s linear infinite; opacity: 0.7; }
+@keyframes slowSpin { 100% { transform: rotate(360deg); } }
+.care-text { font-size: 14.5px; color: #4b5563; line-height: 1.6; padding-left: 8px; }
+.gradient-title { background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; margin-right: 4px; }
+
+.mood-checkin-box { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
+.mood-label { font-size: 14px; color: var(--text-sub); font-weight: 500; }
+.mood-emojis { display: flex; gap: 10px; }
+.mood-btn { background: white; border: 1px solid #e2e8f0; border-radius: 50%; width: 42px; height: 42px; font-size: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+.mood-btn:hover { transform: translateY(-4px) scale(1.1); border-color: var(--primary-color); box-shadow: 0 6px 16px rgba(123, 97, 255, 0.2); }
+.mood-checkin-success { display: flex; align-items: center; gap: 8px; color: #10b981; font-size: 14.5px; font-weight: 500; padding: 10px 0; animation: fadeIn 0.5s ease; }
+.mood-checkin-success svg { width: 18px; height: 18px; color: #10b981; }
+
+.action-btn-group { margin-top: 8px; }
+.continue-btn { background: var(--primary-gradient); color: white; border: none; padding: 12px 32px; border-radius: 50px; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(123, 97, 255, 0.3); display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s; }
+.continue-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(123, 97, 255, 0.4); }
+.continue-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-icon { width: 16px; height: 16px; }
+
+/* --- 2. 中间网格区 (左窄右宽) --- */
+.main-grid { display: grid; grid-template-columns: minmax(280px, 1fr) 2.5fr; gap: 24px; align-items: stretch; margin-top: 10px; }
 
 .daily-quote {
-  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.5) 100%);
-  border-left: 4px solid var(--primary-color); padding: 24px; min-height: 120px;
+  background: linear-gradient(135deg, rgba(234, 240, 255, 0.95) 0%, rgba(255,255,255,0.7) 100%);
+  border-left: 4px solid var(--primary-color); padding: 24px;
+  position: relative; overflow: hidden;
+  cursor: pointer; 
+  transition: transform 0.3s, box-shadow 0.3s;
+  display: flex; flex-direction: column; justify-content: space-between;
 }
-.quote-icon { font-size: 28px; color: var(--primary-color); opacity: 0.5; line-height: 1; display: block; margin-bottom: 8px; }
-.quote-text { font-style: italic; color: #555; margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; }
-.quote-author { font-size: 13px; color: #999; display: block; text-align: right; }
+.daily-quote:hover { transform: translateY(-3px); }
 
-.topic-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
-.topic-pill {
-  padding: 10px 18px; border-radius: 12px;
-  background: rgba(255, 255, 255, 0.6); border: 1px solid rgba(255, 255, 255, 0.8);
-  font-size: 14px; color: #555; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-}
-.topic-pill:hover { background: #fff; color: var(--primary-color); border-color: var(--primary-color); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.1); }
-.topic-pill.highlight { background: rgba(var(--primary-rgb), 0.05); color: var(--primary-color); font-weight: 600; border-color: transparent;}
+.quote-bg-icon { position: absolute; right: -20px; bottom: -20px; width: 150px; height: 150px; color: var(--primary-color); pointer-events: none; }
+.quote-bg-icon svg { width: 100%; height: 100%; }
 
-/* === 核心功能操作列表 === */
-.action-list { display: flex; flex-direction: column; gap: 20px; } /* 稍微加大了间距以填充空间 */
-.action-item {
-  display: flex; align-items: center; padding: 22px; cursor: pointer; background: rgba(255,255,255,0.7);
-  border-radius: 20px; position: relative; overflow: hidden;
+.quote-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; position: relative; z-index: 2; }
+.quote-icon { font-size: 32px; color: var(--primary-color); opacity: 0.4; line-height: 1; }
+.refresh-hint { 
+  font-size: 13px; color: var(--primary-color); opacity: 0; 
+  transition: opacity 0.3s; display: flex; align-items: center; gap: 4px; font-weight: 500;
 }
-.icon-box {
-  width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-right: 18px;
-}
-.primary-icon { background: rgba(var(--primary-rgb), 0.1); color: var(--primary-color); }
-.success-icon { background: rgba(82, 196, 26, 0.1); color: var(--success-color); }
-.warning-icon { background: rgba(250, 140, 22, 0.1); color: var(--warning-color); }
-.info-icon { background: rgba(24, 144, 255, 0.1); color: #1890ff; } 
+.daily-quote:hover .refresh-hint { opacity: 0.8; } 
 
-.text h5 { margin: 0 0 6px 0; font-size: 16px; color: var(--text-main); font-weight: 600;}
-.text span { font-size: 13px; color: var(--text-sub); }
+.quote-content-wrapper { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 2; }
+.quote-text { font-style: italic; color: #475569; margin: 0 0 16px 0; font-size: 15px; line-height: 1.8; }
+.quote-author { font-size: 13px; color: var(--primary-color); display: block; text-align: right; font-weight: 600; }
 
-.arrow-icon { margin-left: auto; font-size: 24px; color: #cbd5e1; font-weight: 300; transition: transform 0.3s, color 0.3s; }
-.action-item:hover .arrow-icon { color: var(--primary-color); transform: translateX(5px); }
+.quote-footer {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px dashed rgba(123, 97, 255, 0.2);
+  position: relative; z-index: 2;
+}
+.date-box { display: flex; flex-direction: column; gap: 2px; }
+.date-box .day { font-size: 16px; font-weight: 700; color: var(--text-main); }
+.date-box .date { font-size: 12px; color: var(--text-sub); }
+.footer-tag { font-size: 12px; background: var(--primary-gradient); color: white; padding: 2px 10px; border-radius: 12px; font-weight: 500; opacity: 0.9; }
 
-/* 模态框 */
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.3); z-index: 9999;
-  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+/* 右侧图表区域 */
+.trend-card { display: flex; flex-direction: column; }
+.header-title { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.header-title .icon { width: 20px; height: 20px; color: var(--primary-color); }
+.header-title h4 { margin: 0; font-size: 17px; color: var(--text-main); font-weight: 600; }
+
+/* ✨ 大幅增加了这里的高度，并使用了 flex 填充 */
+.chart-wrapper { 
+  flex: 1; 
+  min-height: 340px; 
+  width: 100%; 
+  display: flex;
+  flex-direction: column;
 }
-.glass-modal {
-  width: 90%; max-width: 480px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px);
-  border-radius: 24px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  position: relative; text-align: center; border: 1px solid rgba(255,255,255,0.8);
-}
-.close-btn { position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 26px; color: #999; cursor: pointer; transition: 0.2s;}
-.close-btn:hover { color: #333; transform: rotate(90deg); }
-.modal-header { margin-bottom: 20px; }
-.modal-icon { font-size: 48px; display: block; margin-bottom: 12px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
-.modal-header h3 { margin: 0; font-size: 22px; color: var(--text-main); }
-.modal-body { text-align: left; background: rgba(255,255,255,0.6); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.8); }
-.modal-body p { margin: 0 0 8px; font-size: 15px; line-height: 1.6; color: #555; }
-.modal-action-btn {
-  width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
-}
-.modal-action-btn:hover { background: #623c8a; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.4); }
 
 /* 动画 */
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-15px) rotate(3deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .slide-in-down { animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
 .slide-in-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-.slide-in-right { animation: slideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideLeft { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; } }
 
 /* 响应式 */
-@media (max-width: 768px) {
-  .main-grid { grid-template-columns: 1fr; }
-  .hero-section { flex-direction: column; text-align: center; }
-  .greeting-box { justify-content: center; }
+@media (max-width: 850px) {
+  .main-grid { grid-template-columns: 1fr; } 
+  .hero-section { flex-direction: column; }
   .hero-decoration { display: none; }
 }
 </style>

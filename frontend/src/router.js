@@ -9,8 +9,12 @@ import Home from './pages/Home.vue';
 import MeditationPage from './pages/MeditationPage.vue';
 import ArticlePage from './pages/ArticlePage.vue';
 
-// ✨✨✨ 1. 导入日记页面 (确保你已经把组件移动到了 pages 目录并改名了) ✨✨✨
+// 导入日记页面
 import MoodDiaryPage from './pages/MoodDiaryPage.vue';
+
+// ✨✨✨ 新增 1：导入心理报告页面 (ResourcesPage.vue) ✨✨✨
+import ResourcesPage from './pages/ResourcesPage.vue';
+
 
 // 2. 定义路由守卫 (检查是否登录)
 const requireAuth = (to, from, next) => {
@@ -84,11 +88,18 @@ const routes = [
         component: ArticlePage
       },
 
-      // ✨✨✨ 2. 新增路由：情绪日记 ✨✨✨
+      // 情绪日记
       {
         path: 'diary',
         name: 'MoodDiary',
         component: MoodDiaryPage
+      },
+
+      // ✨✨✨ 新增 2：注册心理报告路由 ✨✨✨
+      {
+        path: 'report',
+        name: 'Report',
+        component: ResourcesPage
       }
     ]
   }
