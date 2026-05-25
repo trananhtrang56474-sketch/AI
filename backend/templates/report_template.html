@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.staticfile.net/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #7b61ff; 
+            --danger: #EF4444; --danger-light: rgba(254, 226, 226, 0.8);
+            --text-main: #334155; --text-sub: #64748b;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --chart-blue: #1890FF;
+        }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; padding: 30px; 
+            background: radial-gradient(circle at 10% 10%, rgba(123, 97, 255, 0.08) 0%, #e0f2fe 50%, rgba(123, 97, 255, 0.05) 100%);
+            color: var(--text-main); line-height: 1.6;
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+        }
+        .page-break-guard { page-break-inside: avoid; margin-bottom: 24px; }
+        .header { margin-bottom: 30px; }
+        .header h2 { margin: 0 0 8px 0; font-size: 28px; font-weight: 800; background: linear-gradient(90deg, #0f172a, #334155); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header p { margin: 0; color: var(--text-sub); font-size: 14px; font-weight: 500;}
+        .header-meta { float: right; text-align: right; color: #64748b; font-size: 12px; line-height: 1.8; }
+        .risk-banner { display: flex; align-items: center; gap: 16px; background: var(--danger-light); border: 1px solid rgba(252, 165, 165, 0.5); border-left: 6px solid var(--danger); color: #991b1b; padding: 16px 24px; border-radius: 12px; margin-bottom: 24px; font-size: 14px; }
+        .glass-card { background: var(--bg-card); border-radius: 20px; padding: 24px; box-shadow: 0 8px 32px rgba(148, 163, 184, 0.08); border: 1px solid rgba(255, 255, 255, 0.8); margin-bottom: 24px; }
+        .card-title { font-size: 17px; font-weight: 700; color: var(--text-main); margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px; }
+        .main-grid { display: grid; grid-template-columns: 260px 1fr; gap: 24px; margin-bottom: 24px; }
+        .half-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 0; }
+        .assessment-section { margin-bottom: 20px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-sub); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+        .mini-icon { width: 28px; height: 28px; background: rgba(123, 97, 255, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary-color); font-weight: bold;}
+        .score-row { margin-bottom: 4px; display: flex; align-items: baseline; }
+        .score-num { font-size: 32px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
+        .score-divider { color: #cbd5e1; font-weight: 300; margin: 0 6px; font-size: 20px; }
+        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 700; margin: 8px 0; background: rgba(123, 97, 255, 0.1); color: var(--primary-color); }
+        .desc { font-size: 12px; color: var(--text-sub); margin: 0; }
+        .divider { height: 1px; background: rgba(0,0,0,0.06); margin: 20px 0; }
+        .status-box { background: rgba(240, 248, 255, 0.6); padding: 16px 20px; border-radius: 12px; border-left: 4px solid var(--chart-blue); font-size: 14px; margin-bottom: 20px; }
+        .cbt-box h4 { color: #0f172a; margin: 0 0 10px 0; font-size: 15px; }
+        .cbt-box ul { padding-left: 20px; margin: 0; font-size: 14px; color: #475569; line-height: 1.8; }
+        .quote-item { background: #f8fafc; padding: 16px; border-radius: 12px; border-left: 4px solid var(--danger); margin-bottom: 12px; }
+        .quote-time { font-size: 12px; color: #94a3b8; display: block; margin-bottom: 5px; }
+        .quote-text { margin: 0; font-size: 14px; font-style: italic; color: var(--text-main); }
+        .chart-wrapper { width: 100%; height: 320px; }
+        .chart-small { width: 100%; height: 280px; }
+        .footer { text-align: center; color: var(--text-sub); font-size: 11px; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-meta">
+            评估 ID: {{ report_id }}<br>生成时间: {{ timestamp }}
+        </div>
+        <h2>深度心理洞察报告</h2>
+        <p>基于多模态语义分析与 Russell 情感环形模型</p>
+    </div>
+
+    {% if analytics.risk_level == 'HIGH' %}
+    <div class="risk-banner">
+        <span style="font-size: 24px;">⚠️</span>
+        <span><strong>情绪高风险预警：</strong> 系统检测到您近期情绪能量极低或存在剧烈波动。请允许自己暂时停下来休息，建议寻求专业支持。</span>
+    </div>
+    {% endif %}
+
+    <div class="main-grid page-break-guard">
+        <div class="glass-card" style="margin-bottom: 0;">
+            <div class="assessment-section">
+                <div class="section-header"><span>当前心境评估 (V-A)</span><div class="mini-icon">V</div></div>
+                <div class="score-row">
+                    <span class="score-num">{{ analytics.avg_v | default('5.0') }}</span>
+                    <span class="score-divider">/</span>
+                    <span class="score-num">{{ analytics.avg_a | default('3.0') }}</span>
+                </div>
+                <div class="status-tag">{{ analytics.persona | default('状态平稳') }}</div>
+                <p class="desc">愉悦度 (V) / 激活度 (A)</p>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="assessment-section">
+                <div class="section-header"><span>心理健康指数</span><div class="mini-icon">H</div></div>
+                <div class="score-row" style="margin-top: 10px;">
+                    <span class="score-num" style="color: {% if analytics.health_index >= 60 %}#10b981{% else %}#ef4444{% endif %};">
+                        {{ analytics.health_index | default(60) }}
+                    </span>
+                    <span style="margin-left: 10px; font-size: 14px; font-weight: bold; color: #64748b;">/ 100</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card" style="margin-bottom: 0;">
+            <div class="card-title">📉 近期心境波动轨迹</div>
+            <div style="font-size: 13px; color: #64748b; margin-top: -10px; margin-bottom: 10px;">
+                波动率指数：<strong>{{ analytics.volatility | default(0) }}</strong> | 
+                干预环比：<strong style="color: {% if analytics.progress_delta >= 0 %}#10b981{% else %}#ef4444{% endif %};">
+                    {% if analytics.progress_delta >= 0 %}↑{% else %}↓{% endif %} {{ analytics.progress_delta|abs }} 分
+                </strong>
+            </div>
+            <div id="trendChart" class="chart-wrapper"></div>
+        </div>
+    </div>
+
+    <div class="half-grid page-break-guard" style="margin-bottom: 24px;">
+        <div class="glass-card" style="margin-bottom: 0;"><div class="card-title">🧭 心理能量空间</div><div id="scatterChart" class="chart-small"></div></div>
+        <div class="glass-card" style="margin-bottom: 0;"><div class="card-title">📊 情绪内稳态结构</div><div id="pieChart" class="chart-small"></div></div>
+    </div>
+
+    <div class="glass-card page-break-guard">
+        <div class="card-title">💡 AI 导师诊断与 CBT 建议</div>
+        <div class="status-box"><strong>当前心境：</strong> {{ summary.status_summary | default('暂无总结') }}</div>
+        <div class="half-grid">
+            <div class="cbt-box">
+                <h4>⚠️ 潜在情绪触发点</h4>
+                <ul>
+                    {% for issue in summary.core_issues %}<li>{{ issue }}</li>{% else %}<li>暂无显著压力源</li>{% endfor %}
+                </ul>
+            </div>
+            <div class="cbt-box">
+                <h4>🌱 行动干预建议</h4>
+                <ul>
+                    {% for advice in summary.action_advices %}<li>{{ advice }}</li>{% else %}<li>继续保持觉察</li>{% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    {% if analytics.high_risk_quotes %}
+    <div class="glass-card page-break-guard">
+        <div class="card-title">🚨 核心痛点原话回溯</div>
+        {% for q in analytics.high_risk_quotes %}
+        <div class="quote-item"><span class="quote-time">{{ q.time }}</span><p class="quote-text">“{{ q.text }}”</p></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="footer">本报告由 AI 系统渲染生成。数据图表已精确投射至用户心理空间。</div>
+
+    <script>
+        const dates = {{ dates_json | safe }};
+        const scores = {{ scores_json | safe }};
+        const vaData = {{ va_data_json | safe }};
+        const dist = {{ dist_json | safe }};
+        const c_chart = '#1890FF';
+
+        try {
+            // ✨ 加固 3：开启 renderer: 'svg' 模式！这是无头浏览器导出极清图表的终极武器！
+            const trendChart = echarts.init(document.getElementById('trendChart'), null, { renderer: 'svg' });
+            trendChart.setOption({
+                animation: false, grid: { top: 20, right: 20, bottom: 20, left: 30, containLabel: true },
+                xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#64748b' } },
+                yAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } }, axisLabel: { color: '#64748b' } },
+                series: [{ data: scores, type: 'line', smooth: 0.4, symbol: 'circle', symbolSize: 8, itemStyle: { color: c_chart, borderWidth: 3, borderColor: '#fff' }, lineStyle: { width: 3 }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(24, 144, 255, 0.2)' }, { offset: 1, color: 'rgba(24, 144, 255, 0)' }]) } }]
+            });
+
+            const scatterChart = echarts.init(document.getElementById('scatterChart'), null, { renderer: 'svg' });
+            scatterChart.setOption({
+                animation: false, grid: { top: 10, right: 10, bottom: 10, left: 10, containLabel: true },
+                xAxis: { type: 'value', min: 1, max: 10, show: false }, yAxis: { type: 'value', min: 1, max: 10, show: false },
+                series: [{ type: 'scatter', symbolSize: 14, data: vaData, itemStyle: { color: 'rgba(24, 144, 255, 0.7)', borderColor: '#fff', borderWidth: 1 }, markArea: { silent: true, label: { position: 'inside', color: '#94a3b8', fontSize: 13, fontWeight: 'bold' }, data: [ [{ xAxis: 5.5, yAxis: 5.5, name: '激越 (右上)', itemStyle:{color:'rgba(245, 158, 11, 0.05)'} }, { xAxis: 10, yAxis: 10 }], [{ xAxis: 1, yAxis: 5.5, name: '应激 (左上)', itemStyle:{color:'rgba(239, 68, 68, 0.05)'} }, { xAxis: 5.5, yAxis: 10 }], [{ xAxis: 1, yAxis: 1, name: '抑郁 (左下)', itemStyle:{color:'rgba(47, 84, 235, 0.05)'} }, { xAxis: 5.5, yAxis: 5.5 }], [{ xAxis: 5.5, yAxis: 1, name: '放松 (右下)', itemStyle:{color:'rgba(16, 185, 129, 0.05)'} }, { xAxis: 10, yAxis: 5.5 }] ] } }]
+            });
+
+            const pieChart = echarts.init(document.getElementById('pieChart'), null, { renderer: 'svg' });
+            
+            // ✨ 加固 4：防止饼图因为 0 数据导致崩溃
+            let pieData = [ 
+                { value: dist.positive || 0, name: '积极/高能', itemStyle: { color: c_chart } }, 
+                { value: dist.neutral || 0, name: '平静/中性', itemStyle: { color: '#cbd5e1' } }, 
+                { value: dist.negative || 0, name: '消极/内耗', itemStyle: { color: '#FF4D4F' } } 
+            ].filter(item => item.value > 0);
+            
+            if(pieData.length === 0) pieData = [{ value: 1, name: '暂无数据', itemStyle: { color: '#f1f5f9' } }];
+
+            pieChart.setOption({
+                animation: false, legend: { bottom: 0, left: 'center', icon: 'circle', textStyle: { color: '#64748b' } },
+                series: [{ type: 'pie', radius: ['50%', '75%'], center: ['50%', '45%'], itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 3 }, label: { show: false }, data: pieData }]
+            });
+        } catch (e) {
+            document.getElementById('trendChart').innerHTML = '图表渲染失败: ' + e.message;
+        }
+    </script>
+</body>
+</html>

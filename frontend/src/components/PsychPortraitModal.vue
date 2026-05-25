@@ -231,7 +231,7 @@ const stressLevel = computed(() => stressScore.value > 75 ? '偏高' : (stressSc
 // ==========================================
 
 const emotionColor = computed(() => EMOTION_MAPS.colors[dominantEmotion.value] || '#7b61ff');
-const emotionIcon = computed(() => EMOTION_MAPS.icons[dominantEmotion.value] || '🧠');
+const emotionIcon = computed(() => EMOTION_MAPS.icons[dominantEmotion.value] || '');
 
 const subState = computed(() => {
   if (['焦虑', '愤怒', '危机'].includes(dominantEmotion.value)) return '紧绷';

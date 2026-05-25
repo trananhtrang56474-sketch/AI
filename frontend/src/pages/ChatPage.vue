@@ -53,7 +53,7 @@ import axios from 'axios';
 import ChatWindow from '@/components/ChatWindow.vue';
 import MessageInput from '@/components/MessageInput.vue';
 
-// ✨ 引入 Store
+//  引入 Store
 import { useChatStore } from '@/stores/chatStore';
 import { authStore as analysisStore } from '../store.js';
 import { bus } from '../eventBus';
@@ -71,7 +71,7 @@ let typingTimer = null;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-/* ================= ✨ 修改：核弹级清空历史逻辑 ================= */
+/* =================  修改：核弹级清空历史逻辑 ================= */
 const handleClearHistory = async () => {
   const sid = route.query.session_id;
   const uid = localStorage.getItem('user_id'); // 获取当前用户 ID
@@ -81,7 +81,7 @@ const handleClearHistory = async () => {
     try {
       await axios.post(`${API_BASE}/api/history/clear`, {
         session_id: sid,
-        user_id: uid // ✨ 把 user_id 也传给后端，用于彻底清空图表底层数据
+        user_id: uid //  把 user_id 也传给后端，用于彻底清空图表底层数据
       });
       
       // 1. 清空前端缓存显示
@@ -89,7 +89,7 @@ const handleClearHistory = async () => {
       // 2. 重置心理分析状态
       analysisStore.resetAnalysis();
       
-      // 3. ✨ 核心修复：发射全局刷新信号，通知 ECharts 组件重新变回“空状态”
+      // 3.  核心修复：发射全局刷新信号，通知 ECharts 组件重新变回“空状态”
       if (bus && bus.emitRefresh) {
         bus.emitRefresh();
       }
@@ -126,10 +126,10 @@ const loadHistory = async (sessionId) => {
   try {
     const res = await axios.get(`${API_BASE}/api/history?session_id=${sessionId}`);
     
-    // 💡 打印后端到底传回来了什么东西
-    console.log("📥 [Debug] 后端返回的历史数据:", res.data);
+    //  打印后端到底传回来了什么东西
+    console.log(" [Debug] 后端返回的历史数据:", res.data);
 
-    // ✨ 核心修复：兼容多种后端返回格式
+    
     // 有的后端用 res.data.messages 包装，有的直接返回 res.data 数组
     let historyMsgs = [];
     if (res.data && Array.isArray(res.data.messages)) {
@@ -157,7 +157,7 @@ const loadHistory = async (sessionId) => {
   }
 };
 
-// 🚀 已移除 fetchChartData 函数
+
 
 /* ================= 核心：路由监听 ================= */
 
@@ -166,7 +166,7 @@ watch(
   async (newId) => {
     if (route.path !== '/chat') return;
     
-    // ✨ 核心修复：如果没有传 session_id，不要直接清空，而是尝试自动恢复用户的历史会话
+    //  如果没有传 session_id，不要直接清空，而是尝试自动恢复用户的历史会话
     if (!newId) {
       const userId = localStorage.getItem('user_id');
       if (userId) {
@@ -195,7 +195,7 @@ watch(
     // 检查是否有缓存的心理状态
     const cachedAnalysis = chatStore.getSessionAnalysis(newId);
     if (cachedAnalysis) {
-      console.log("🧠 [Cache] 从缓存恢复心理状态:", cachedAnalysis.emotion);
+      console.log(" [Cache] 从缓存恢复心理状态:", cachedAnalysis.emotion);
       analysisStore.updateAnalysis(cachedAnalysis); // 恢复 UI
     } else {
       // 没缓存，重置一下，等 loadHistory 去加载
@@ -296,7 +296,7 @@ const handleCompositeSend = async ({ text, file }) => {
       const realId = res.data.session_id;
       // 把数据从临时 ID 搬迁到 真实 ID
       chatStore.setConversation(realId, chatStore.conversations[sessionId]);
-      // 🚀 移除了临时 ChartData 搬迁逻辑
+      //  移除了临时 ChartData 搬迁逻辑
       delete chatStore.conversations[sessionId]; // 删除临时数据
       
       router.replace(`/chat?session_id=${realId}`);
@@ -320,7 +320,7 @@ const handleCompositeSend = async ({ text, file }) => {
         clearInterval(typingTimer);
         typingTimer = null;
         isTyping.value = false;
-        // 🚀 移除了 fetchChartData()
+       
       }
     }, 30);
 
@@ -360,7 +360,7 @@ onUnmounted(() => {
 .status-dot { width: 8px; height: 8px; background: var(--success-color); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 8px rgba(82, 196, 26, 0.4); }
 .status-text { font-size: 12px; color: var(--success-color); font-weight: 500; }
 
-/* ✨ 清空按钮样式 */
+/*  清空按钮样式 */
 .header-right-tools { display: flex; align-items: center; }
 .clear-history-btn {
   display: flex; align-items: center; gap: 6px;

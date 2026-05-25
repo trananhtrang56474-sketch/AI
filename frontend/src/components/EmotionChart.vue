@@ -30,6 +30,7 @@
       v-if="hasData" 
       class="chart" 
       :option="currentOption" 
+      :update-options="{ notMerge: true, lazyUpdate: true }"
       @click="handleChartClick"
       autoresize 
     />
@@ -239,7 +240,7 @@ const handleChartClick = (params) => {
     arousal: Math.round((props.chartData.arousals?.[index] || 5) * 10) / 10
   };
 };
-
+// 时间轨迹
 const timelineOption = computed(() => {
   if (!hasData.value) return {};
   const lastIdx = props.chartData.dates.length - 1;
@@ -248,7 +249,14 @@ const timelineOption = computed(() => {
 
   return {
     backgroundColor: 'transparent',
+    // ✨ 核心动画控制：开启数据更新时的平滑过渡
+    animation: true,
+    animationDuration: 1000,          // 第一次进网页时的绘制时长
+    animationDurationUpdate: 500,     // 每次发新消息时，新点延伸的时长
+    animationEasingUpdate: 'cubicInOut',
+
     grid: { top: '15%', bottom: '20%', left: '2%', right: '5%', containLabel: true },
+  
     dataZoom: [
       { type: 'inside', xAxisIndex: 0, filterMode: 'filter' }, 
       { 
@@ -307,20 +315,52 @@ const timelineOption = computed(() => {
     ]
   };
 });
-
+// 心理空间
 const circumplexOption = computed(() => {
   if (!hasData.value) return {};
   
-  // ✨ 优化：增加默认数组和边界保护，避免因数据未完全加载导致异常
   const valences = props.chartData.valences || [];
   const arousals = props.chartData.arousals || [];
   
-  const scatterData = valences.map((v, i) => [v, arousals[i] || 5]);
+  // ✨ 升级 1：重构散点数据，专门为“起点”和“当前”定制颜色、大小和层级
+  const scatterData = valences.map((v, i) => {
+    const isStart = i === 0;
+    const isEnd = i === valences.length - 1;
+    
+    let color = 'rgba(123, 97, 255, 0.4)'; // 默认：半透明紫
+    let borderColor = '#fff';
+    let size = 14;
+    let zlevel = 3;
 
-  // ✨ 优化：更具声明式的线段生成逻辑
+    if (isStart) {
+      color = '#10b981'; // 起点：治愈绿
+      borderColor = '#059669';
+      size = 18;
+      zlevel = 4;
+    } else if (isEnd) {
+      color = '#ef4444'; // 当前：警示红
+      borderColor = '#b91c1c';
+      size = 18;
+      zlevel = 5;
+    }
+
+    return {
+      value: [v, arousals[i] || 5],
+      itemStyle: { color, borderColor, borderWidth: 2, shadowColor: color, shadowBlur: 8 },
+      symbolSize: size,
+      zlevel,
+      isStart, // 埋入标记供 Tooltip 使用
+      isEnd
+    };
+  });
+
+  // ✨ 升级 2：修复连线读取逻辑（因为 scatterData 现在变成了对象数组）
   const lineData = scatterData.slice(0, -1).map((point, i) => ({
-    coords: [point, scatterData[i + 1]]
+    coords: [point.value, scatterData[i + 1].value]
   }));
+
+  const startPoint = scatterData[0].value;
+  const endPoint = scatterData[scatterData.length - 1].value;
 
   return {
     backgroundColor: 'transparent',
@@ -333,7 +373,13 @@ const circumplexOption = computed(() => {
         const time = props.chartData.dates[i];
         const tag = props.chartData.tags[i] || '未知';
         const academicStr = getAcademicLabel(props.chartData.valences[i]||5, props.chartData.arousals[i]||5);
-        return `<b>🕒 ${time}</b><br/>${tag} <span style="color:#94a3b8;font-size:11px;">(${academicStr})</span><br/><small style="color:#94a3b8">👉 点击查看 CBT 建议</small>`;
+        
+        // Tooltip 里也明示起点和当前
+        let prefix = '🕒';
+        if (params.data.isStart) prefix = '🟢 [初始状态]';
+        if (params.data.isEnd) prefix = '🔴 [当前状态]';
+
+        return `<b>${prefix} ${time}</b><br/>${tag} <span style="color:#94a3b8;font-size:11px;">(${academicStr})</span><br/><small style="color:#94a3b8">👉 点击查看 CBT 建议</small>`;
       }
     },
     xAxis: { type: 'value', min: 1, max: 10, splitLine: { show: false }, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#cbd5e1', width: 2 } } },
@@ -342,20 +388,30 @@ const circumplexOption = computed(() => {
       {
         type: 'scatter',
         data: scatterData,
-        symbolSize: 14,
-        itemStyle: {
-          color: 'rgba(123, 97, 255, 0.4)',
-          borderColor: '#fff',
-          borderWidth: 1,
-          shadowColor: 'rgba(123, 97, 255, 0.3)',
-          shadowBlur: 8
-        },
-        zlevel: 3
       },
       {
         type: 'lines', coordinateSystem: 'cartesian2d', data: lineData, zlevel: 2,
         effect: { show: true, period: 4, trailLength: 0.2, symbol: 'arrow', symbolSize: 8, color: '#7b61ff' },
         lineStyle: { color: 'rgba(123, 97, 255, 0.3)', width: 2, type: 'dashed', curveness: 0.2 }
+      },
+      // ✨ 升级 3：强制加上“起点”和“当前”的图钉文本 (MarkPoint)
+      {
+        type: 'scatter', data: [],
+        markPoint: {
+          symbol: 'pin', symbolSize: 45,
+          data: [
+            { name: '起点', coord: startPoint, value: '起点', itemStyle: { color: '#10b981' } },
+            { name: '当前', coord: endPoint, value: '当前', itemStyle: { color: '#ef4444' } }
+          ],
+          label: { color: '#fff', fontSize: 10, formatter: '{c}' }
+        }
+      },
+      // ✨ 升级 4：给最终的“当前状态”加上显眼的呼吸涟漪光环
+      {
+        type: 'effectScatter', coordinateSystem: 'cartesian2d', data: [endPoint],
+        symbolSize: 18, showEffectOn: 'render', rippleEffect: { brushType: 'stroke', scale: 3.5 },
+        itemStyle: { color: '#ef4444', shadowBlur: 10, shadowColor: 'rgba(239, 68, 68, 0.5)' },
+        zlevel: 5, tooltip: { show: false } 
       },
       {
         type: 'line', data: [], 

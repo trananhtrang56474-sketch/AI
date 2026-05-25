@@ -2,7 +2,7 @@
   <div class="report-container">
     <div class="report-header">
       <div class="header-titles">
-        <h2 class="gradient-text">🧠 深度心理洞察报告</h2>
+        <h2 class="gradient-text"> 深度心理洞察报告</h2>
         <p>基于多模态语义分析与 Russell 情感环形模型</p>
       </div>
       <button class="export-btn" @click="downloadPDF" :disabled="isExporting">
@@ -11,7 +11,7 @@
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
-        {{ isExporting ? '正在云端渲染...' : '导出高端 PDF' }}
+        {{ isExporting ? '正在云端渲染...' : '导出 PDF' }}
       </button>
     </div>
 

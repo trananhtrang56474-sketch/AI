@@ -27,40 +27,6 @@
       </div>
     </transition>
 
-    <div class="aside-card glass-card growth-card">
-      <div class="card-header">
-        <div class="header-left">
-          <span class="icon-circle growth-icon">📈</span>
-          <h3>成长记录</h3>
-        </div>
-      </div>
-      <div class="growth-stats">
-        <div class="stat-box">
-          <span class="stat-value">{{ userStats.days }}<small>天</small></span>
-          <span class="stat-name">陪伴</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-box">
-          <span class="stat-value">{{ userStats.diary }}<small>篇</small></span>
-          <span class="stat-name">日记</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-box">
-          <span class="stat-value">{{ userStats.meditation }}<small>次</small></span>
-          <span class="stat-name">练习</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="aside-card glass-card emergency-card">
-      <div class="card-header">
-        <div class="header-left">
-          <span class="icon-circle alert-bg">🆘</span>
-          <h3 class="alert-text">紧急帮助</h3>
-        </div>
-      </div>
-      <a href="tel:12345678" class="emergency-btn">拨打援助热线</a>
-    </div>
 
     <div class="aside-card glass-card toolbox-card">
       <div class="card-header">

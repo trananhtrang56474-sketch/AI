@@ -11,7 +11,7 @@ DATA_ROOT = os.path.join(BASE_DIR, 'data')
 PERSIST_DIRECTORY = os.path.join(BASE_DIR, 'chroma_db')
 
 def build_vector_db():
-    print("🚀 [Pro版] 开始构建全量知识库...")
+    print(" 开始构建全量知识库...")
     
     # 1. 初始化 ChromaDB
     client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
@@ -37,7 +37,7 @@ def build_vector_db():
     knowledge_dir = os.path.join(DATA_ROOT, 'knowledge')
     
     if not os.path.exists(knowledge_dir):
-        print(f"❌ 错误：找不到 {knowledge_dir}，请先运行 setup_data_structure.py")
+        print(f" 错误：找不到 {knowledge_dir}，请先运行 setup_data_structure.py")
         return
 
     # os.walk 会像爬虫一样遍历所有子目录
@@ -51,14 +51,12 @@ def build_vector_db():
                 category = os.path.relpath(root, knowledge_dir)
                 if category == ".": category = "general"
 
-                print(f"📖 处理: [{category}] {file} ...")
+                print(f" 处理: [{category}] {file} ...")
 
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         text = f.read()
-                        
                         # --- 智能切片策略 ---
-                        # 这里我们用简单的按长度切分，论文里可以写 "Sliding Window Strategy"
                         chunk_size = 300
                         overlap = 50 
                         
@@ -69,18 +67,18 @@ def build_vector_db():
                             documents.append(chunk)
                             metadatas.append({
                                 "source": file,
-                                "category": category, # 🔥 自动打上的分类标签
+                                "category": category, # 自动打上的分类标签
                                 "stage": "knowledge_retrieval",
                                 "response": f"根据{category}领域的专业知识：{chunk[:20]}..."
                             })
                             ids.append(f"{category}_{file}_{i}")
                             count += 1
                 except Exception as e:
-                    print(f"⚠️ 读取文件失败 {file}: {e}")
+                    print(f"读取文件失败 {file}: {e}")
 
     # ==========================================
     # 补充：也加载 Scales (量表) 的描述信息
-    # 这样用户问 "什么是PHQ9" 时能搜到
+    # 
     # ==========================================
     scales_dir = os.path.join(DATA_ROOT, 'scales')
     if os.path.exists(scales_dir):
@@ -100,12 +98,12 @@ def build_vector_db():
                         })
                         ids.append(f"scale_{file}")
                         count += 1
-                        print(f"📊 加载量表定义: {file}")
+                        print(f" 加载量表定义: {file}")
                 except: pass
 
     # 3. 写入数据库
     if documents:
-        print(f"💾 正在写入 {len(documents)} 条数据 (来源: DSM-5, CBT, 量表库)...")
+        print(f" 正在写入 {len(documents)} 条数据 (来源: DSM-5, CBT, 量表库)...")
         batch_size = 100
         for i in range(0, len(documents), batch_size):
             end = min(i + batch_size, len(documents))
@@ -114,8 +112,8 @@ def build_vector_db():
                 metadatas=metadatas[i:end],
                 ids=ids[i:end]
             )
-        print("✅ 知识库构建完成！")
-        print(f"📌 数据结构已更新至: {DATA_ROOT}")
+        print(" 知识库构建完成！")
+        print(f" 数据结构已更新至: {DATA_ROOT}")
     else:
         print("❌ 没有找到有效数据，请检查 txt 文件内容！")
 

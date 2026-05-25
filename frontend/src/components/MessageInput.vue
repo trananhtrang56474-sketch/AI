@@ -119,7 +119,7 @@ const textareaRef = ref(null);
 const isFocused = ref(false);
 const showQuickTags = ref(true);
 
-// ✨ 新增：危机干预状态与敏感词正则
+//  新增：危机干预状态与敏感词正则
 const showCrisisModal = ref(false);
 // 覆盖常见的高风险表达，可根据需要扩充
 const crisisRegex = /(自杀|不想活了|想死|死掉|结束生命|活不下去|太绝望了|没意思了|一了百了)/;
@@ -178,7 +178,7 @@ const handleEnter = (e) => {
 const sendMessage = () => {
   if ((!text.value.trim() && !selectedFile.value) || props.isLoading) return;
 
-  // ✨✨✨ 前端轻量级安全围栏拦截 ✨✨✨
+  //  前端轻量级安全围栏拦截 
   if (text.value && crisisRegex.test(text.value)) {
     showCrisisModal.value = true; // 触发援助弹窗
   }
@@ -198,7 +198,7 @@ const sendMessage = () => {
   });
 };
 
-// ✨ 修复 1：暴露 setText 方法，给外部组件（比如从文章页带参数过来）使用
+//  暴露 setText 方法，给外部组件（比如从文章页带参数过来）使用
 const setText = (newText) => {
   text.value = newText;
   nextTick(() => {

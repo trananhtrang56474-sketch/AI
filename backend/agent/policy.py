@@ -7,11 +7,11 @@ class PolicyRouter:
     @staticmethod
     def route(emotion, trend, user_text, valence=5, arousal=5):
         
-        # 0. 🕵️‍♀️ 意图侦测：用户是在"求方法"吗？
+        # 0. 意图侦测：用户是在"求方法"吗？
         is_asking_method = any(w in user_text for w in ['怎么', '如何', '办法', '建议', '教我', '什么', 'try', 'step'])
 
         # ==========================================
-        # ✨ 新增：基于 Arousal (唤醒度) 的能量配速指令
+        # 新增：基于 Arousal (唤醒度) 的能量配速指令
         # ==========================================
         energy_instruction = ""
         if arousal >= 8:
@@ -22,7 +22,7 @@ class PolicyRouter:
             energy_instruction = "【中等唤醒】用户能量平稳，采用正常对话语速与信息量即可。"
 
         # ==========================================
-        # 1. 🚨 危机与风险 (最高优先级)
+        # 1. 危机与风险 (最高优先级)
         # ==========================================
         if emotion == '危机' or trend in ['CRISIS_RISING', 'CRISIS_ALERT'] or valence <= 2:
             return {
@@ -32,7 +32,7 @@ class PolicyRouter:
             }
 
         # ==========================================
-        # 2. 🎭 假性平静 (Killer Feature)
+        # 2.  假性平静 (Killer Feature)
         # ==========================================
         if trend == 'EMOTIONAL_SUPPRESSION':
             return {
@@ -42,7 +42,7 @@ class PolicyRouter:
             }
 
         # ==========================================
-        # 3. 📉 恶化或持续负面
+        # 3. 恶化或持续负面
         # ==========================================
         if trend in ['DETERIORATING', 'PERSISTENT_NEGATIVE']:
             return {
@@ -56,7 +56,7 @@ class PolicyRouter:
         # 标签库: [危机, 愤怒, 焦虑, 恐慌, 抑郁, 悲伤, 愧疚, 迷茫, 平静, 放松, 积极, 开心]
         # ==========================================
         
-        # 🌞 高效价 (积极, 开心, 放松)
+        #  高效价 (积极, 开心, 放松)
         if emotion in ['积极', '开心', '放松']:
             return {
                 "search_intent": "积极心理学 优势探索 心流 庆祝",
@@ -64,7 +64,7 @@ class PolicyRouter:
                 "instruction": f"用户当前情绪正面（{emotion}）。请使用积极心理学技巧：1. 进行'品味'(Savoring)，让用户多描述开心的细节。2. 肯定用户的优势。3. 共同庆祝。\n{energy_instruction}"
             }
 
-        # 🌫️ 中性效价 (迷茫)
+        #  中性效价 (迷茫)
         if emotion == '迷茫':
             base_instr = f"用户感到迷茫。\n{energy_instruction}\n"
             if is_asking_method:
@@ -78,7 +78,7 @@ class PolicyRouter:
                 "instruction": base_instr
             }
 
-        # 💔 悲伤
+        #  悲伤
         if emotion == '悲伤':
             return {
                 "search_intent": "哀伤辅导 丧失处理 情感支撑",

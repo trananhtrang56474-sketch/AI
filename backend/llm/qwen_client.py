@@ -32,7 +32,7 @@ class QwenClient:
         # 🅰️ 模式一：多模态 (有图) -> 使用 qwen-vl-max
         # ==========================================
         if image_path:
-            print(f"👁️ 启动视觉模式，正在处理图片: {image_path}")
+            print(f" 启动视觉模式，正在处理图片: {image_path}")
             
             # 1. 把图片转 Base64
             base64_img = self._encode_image(image_path)
@@ -69,7 +69,7 @@ class QwenClient:
             vl_messages[0]['content'][1]['text'] = system_prompt + user_text
 
             payload = {
-                "model": "qwen-vl-max", # 🔥 视觉大模型
+                "model": "qwen-vl-max", # 
                 "messages": vl_messages,
                 "temperature": temperature
             }
@@ -79,7 +79,7 @@ class QwenClient:
         # ==========================================
         else:
             payload = {
-                "model": "qwen-plus", # ⚡ 文本大模型
+                "model": "qwen-plus", # 
                 "messages": messages,
                 "max_tokens": 1500,
                 "temperature": temperature

@@ -20,7 +20,7 @@ BACKEND_URL = f"http://{BACKEND_HOST}:{BACKEND_PORT}"
 FRONTEND_URL = "http://localhost:5173"
 
 def start_backend():
-    print(f"🔧 正在启动 Flask 后端 (端口 {BACKEND_PORT})...")
+    print(f"🔧 正在启动 FastAPI 后端 (端口 {BACKEND_PORT})...")
     
     if platform.system() == "Windows":
         venv_python = os.path.join(BASE_DIR, '.venv', 'Scripts', 'python.exe')
@@ -32,8 +32,8 @@ def start_backend():
         print("请确保在项目根目录下创建了 .venv 虚拟环境")
         sys.exit(1)
     
-    # 启动后端进程
-    return subprocess.Popen([venv_python, 'app.py'], cwd=BACKEND_DIR)
+    # ✨ 核心修改：将 'app.py' 改为了 'main.py'
+    return subprocess.Popen([venv_python, 'main.py'], cwd=BACKEND_DIR)
 
 def start_frontend():
     print("🚀 正在启动 Vue 前端 (后台并行编译中)...")
@@ -45,13 +45,19 @@ def wait_for_backend(timeout=60):
     print("⏳ 等待后端服务就绪...", end="", flush=True)
     start_time = time.time()
     
+    # ✨ 核心修改 1：直接去访问必然存在的 API 文档页，避免 404 误判
+    check_url = f"{BACKEND_URL}/docs"
+    
     while time.time() - start_time < timeout:
         try:
-            with urllib.request.urlopen(BACKEND_URL, timeout=1) as response:
-                print("\n✅ 后端服务已启动！")
+            with urllib.request.urlopen(check_url, timeout=1) as response:
+                print("\n✅ 后端服务已完美启动！")
                 return True
+        except urllib.error.HTTPError as e:
+            # ✨ 核心修改 2：只要能拿到 HTTP 状态码（比如 404/307），说明服务器肯定在运行了！
+            print(f"\n✅ 后端服务已响应 (状态码: {e.code})！")
+            return True
         except (urllib.error.URLError, ConnectionResetError):
-            # ✨ 优化：把 sleep(1) 改成 0.2 秒，轮询更快，一旦启动瞬间捕获
             time.sleep(0.2)
             print(".", end="", flush=True)
         except Exception:
@@ -60,7 +66,6 @@ def wait_for_backend(timeout=60):
             
     print("\n❌ 后端启动超时，请检查后端是否有报错信息。")
     return False
-
 if __name__ == '__main__':
     backend_process = None
     frontend_process = None
@@ -76,6 +81,7 @@ if __name__ == '__main__':
             print("\n=== ✨ 全栈项目启动成功 ===")
             print(f"🌍 前端地址: {FRONTEND_URL}")
             print(f"🔌 后端地址: {BACKEND_URL}")
+            print(f"📖 接口文档: {BACKEND_URL}/docs")
             print("🛑 按下 Ctrl + C 可以停止所有服务\n")
 
             # 3. ✨ 优化：等后端好了，由 Python 主动帮你打开浏览器

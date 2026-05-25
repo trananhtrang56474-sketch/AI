@@ -48,7 +48,7 @@
           </svg>
         </div>
         <transition name="fade">
-          <span v-show="!isCollapsed" class="nav-text">仪表盘</span>
+          <span v-show="!isCollapsed" class="nav-text">首页</span>
         </transition>
       </div>
       

@@ -402,29 +402,7 @@ onUnmounted(() => {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* ==================== [新增] Toast 样式 ==================== */
-.toast-message {
-  position: fixed;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.95); /* 改为亮色背景适配深色环境 */
-  color: #333;
-  padding: 12px 24px;
-  border-radius: 50px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  display: flex; align-items: center; gap: 10px;
-  font-size: 0.95rem; font-weight: bold;
-  z-index: 2000;
-  backdrop-filter: blur(10px);
-}
 
-.toast-fade-enter-active, .toast-fade-leave-active {
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.toast-fade-enter-from, .toast-fade-leave-to {
-  opacity: 0; transform: translate(-50%, -20px);
-}
 
 /* ==================== [新增] Modal 样式 ==================== */
 .custom-modal-overlay {

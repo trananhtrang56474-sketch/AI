@@ -1,58 +1,47 @@
 # backend/models/chat.py
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Index, Float # 确保导入了 Float
+from sqlalchemy.orm import relationship
 from datetime import datetime
-from extensions import db
+from database import Base
 
-# --- 会话表 ---
-class ChatSession(db.Model):
+class ChatSession(Base):
     __tablename__ = 'chat_sessions'
     __table_args__ = (
-        db.Index('idx_user_created', 'user_id', 'created_at'),
-        {
-            'mysql_charset': 'utf8mb4',
-            'mysql_collate': 'utf8mb4_unicode_ci',
-            'mysql_engine': 'InnoDB'
-        }
+        Index('idx_user_created', 'user_id', 'created_at'),
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'mysql_engine': 'InnoDB'}
     )
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    title = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    title = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
 
-    # 关系：Session -> ChatLog
-    logs = db.relationship(
-        'ChatLog',
-        backref='session',
-        lazy='dynamic',
-        cascade='all, delete-orphan'
-    )
+    #  这里的 relationship 会寻找 ChatLog 里的 ForeignKey
+    logs = relationship('ChatLog', backref='session', lazy='dynamic', cascade='all, delete-orphan')
 
-# --- 消息表 ---
-class ChatLog(db.Model):
+class ChatLog(Base):
     __tablename__ = 'chat_logs'
     __table_args__ = (
-        db.Index('idx_session_created', 'session_id', 'created_at'),
-        {
-            'mysql_charset': 'utf8mb4',
-            'mysql_collate': 'utf8mb4_unicode_ci',
-            'mysql_engine': 'InnoDB'
-        }
+        Index('idx_session_created', 'session_id', 'created_at'),
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'mysql_engine': 'InnoDB'}
     )
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    session_id = db.Column(db.Integer, db.ForeignKey('chat_sessions.id'), nullable=False)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     
-    role = db.Column(db.String(20), nullable=False)
-    content = db.Column(db.Text, nullable=False)
+    #  关键点：这一行必须包含 ForeignKey('chat_sessions.id') ✨✨✨
+    session_id = Column(Integer, ForeignKey('chat_sessions.id'), nullable=False)
     
-    # 情感标签 (保留)
-    emotion_tag = db.Column(db.String(50), nullable=True)
-
-    # ✨✨✨ 【新增】心理健康评分 (0-100) ✨✨✨
-    # 默认 60 分 (对应 Valence=0 的平静状态)
-    emotion_score = db.Column(db.Integer, default=60)
-    # ✨ 新增的两个底层心理学维度字段
-    valence = db.Column(db.Integer, nullable=True, default=5)
-    arousal = db.Column(db.Integer, nullable=True, default=3)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    
+    # 我们刚刚修改的浮点数字段
+    image_url = Column(Text, nullable=True) 
+    emotion_tag = Column(String(50), nullable=True)
+    emotion_score = Column(Integer, default=60)
+    
+    #  确认这里是 Float
+    valence = Column(Float, nullable=True, default=5.0)  
+    arousal = Column(Float, nullable=True, default=3.0)  
+    
+    created_at = Column(DateTime, default=datetime.now)

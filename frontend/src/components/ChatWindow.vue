@@ -135,7 +135,7 @@ watch(() => props.messages, () => { scrollToBottom(); }, { deep: true, immediate
 .message-row { display: flex; margin-bottom: 24px; align-items: flex-start; gap: 14px; }
 .message-user { flex-direction: row-reverse; }
 
-/* ✨ 头像容器优化：稍微加大了图标显示比例，让向日葵更饱满 */
+/*  头像容器优化：稍微加大了图标显示比例，让向日葵更饱满 */
 .avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.08); flex-shrink: 0; overflow: hidden; border: 2px solid rgba(255,255,255,0.9); }
 .avatar img { width: 75%; height: 75%; object-fit: contain; transition: transform 0.3s; }
 .avatar:hover img { transform: scale(1.1); } /* 增加了一个悬浮放大的小动画 */

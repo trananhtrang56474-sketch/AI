@@ -37,7 +37,7 @@
         ></textarea>
 
         <button class="save-btn" @click="saveDiary" :disabled="!diaryContent.trim() || loading">
-          {{ loading ? '保存中...' : '✨ 保存记录' }}
+          {{ loading ? '云端同步中...' : '✨ 封存今日记忆' }}
         </button>
       </div>
 
@@ -56,14 +56,9 @@
                 <span class="diary-mood">{{ getMoodIcon(diary.mood) }}</span>
                 <span class="diary-date">{{ formatDate(diary.created_at) }}</span>
               </div>
-              
-              <div class="delete-action">
-                <div v-if="deletingId === diary.id" class="confirm-box">
-                  <button class="confirm-btn" @click="deleteDiary(diary.id)">确定?</button>
-                  <button class="cancel-btn" @click="deletingId = null">取消</button>
-                </div>
-                <button v-else class="del-btn" @click="deletingId = diary.id">删除</button>
-              </div>
+              <button class="del-btn" @click="openDeleteModal(diary.id)">
+                <span class="del-icon">🗑️</span> 删除
+              </button>
             </div>
             <p class="diary-content">{{ diary.content }}</p>
           </div>
@@ -71,6 +66,35 @@
       </div>
 
     </div>
+
+    <Transition name="toast-fade">
+      <div v-if="showSaveSuccess" class="custom-success-toast">
+        <div class="toast-icon-box">✨</div>
+        <div class="toast-text">
+          <h4>保存成功</h4>
+          <p>这段记忆已安全封存于云端档案</p>
+        </div>
+      </div>
+    </Transition>
+
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showDeleteModal" class="custom-modal-overlay" @click.self="showDeleteModal = false">
+          <div class="custom-modal">
+            <div class="modal-alert-icon">⚠️</div>
+            <h3>确认删除记录？</h3>
+            <p>这段心路历程一旦抹去将无法恢复，确定要删除吗？</p>
+            <div class="modal-actions">
+              <button class="modal-btn cancel" @click="showDeleteModal = false">再想想</button>
+              <button class="modal-btn confirm" @click="executeDelete" :disabled="isDeleting">
+                {{ isDeleting ? '删除中...' : '确定删除' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
   </div>
 </template>
 
@@ -78,12 +102,7 @@
 import { ref, onMounted } from 'vue';
 import { authStore } from '../store.js';
 
-// 引入 Toast
-let showToast = (msg, type) => alert(msg);
-try {
-  import('@/utils/toast').then(module => { if (module && module.showToast) showToast = module.showToast; });
-} catch (e) {}
-
+// 基础数据字典
 const moods = [
   { value: 'happy', icon: '😄', label: '开心' },
   { value: 'calm', icon: '😌', label: '平静' },
@@ -92,48 +111,44 @@ const moods = [
   { value: 'angry', icon: '😠', label: '生气' },
 ];
 
+// 状态管理
 const currentMood = ref('calm');
 const diaryContent = ref('');
 const diaries = ref([]);
-const deletingId = ref(null);
 const loading = ref(false);
 
-// 提取后端地址常量，方便以后修改
-// ✨✨✨ 修改点：端口改为 8080 ✨✨✨
-const API_BASE_URL = 'http://localhost:8080/api/diaries';
+// ✨ 新增的弹窗控制状态
+const showSaveSuccess = ref(false);
+const showDeleteModal = ref(false);
+const targetDeleteId = ref(null);
+const isDeleting = ref(false);
 
+const API_BASE_URL = 'http://localhost:8080/api/diaries';
 const getUserId = () => authStore.user_id || localStorage.getItem('user_id');
 
-// 2. 加载日记 (GET)
+// 1. 加载日记
 const fetchDiaries = async () => {
   const userId = getUserId();
   if (!userId) return;
-
   try {
-    // ✨✨✨ 使用 8080 端口 ✨✨✨
     const res = await fetch(`${API_BASE_URL}?user_id=${userId}`);
-    // 如果后端没启动，这里会直接抛出 TypeError
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    
     const data = await res.json();
     if (data.success) {
       diaries.value = data.diaries;
     }
   } catch (error) {
     console.error("加载失败:", error);
-    // 只有在真的连不上时才提示
-    // showToast("加载日记失败，请确认后端已启动", "error");
   }
 };
 
-// 3. 保存日记 (POST)
+// 2. 升级版保存逻辑 (触发动画 Toast)
 const saveDiary = async () => {
   if (!diaryContent.value.trim()) return;
   const userId = getUserId();
   
   loading.value = true;
   try {
-    // ✨✨✨ 使用 8080 端口 ✨✨✨
     const res = await fetch(API_BASE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -149,35 +164,45 @@ const saveDiary = async () => {
       diaries.value.unshift(data.new_diary);
       diaryContent.value = '';
       currentMood.value = 'calm';
-      showToast('日记已保存至云端 ☁️', 'success');
+      
+      // 触发华丽的 Toast
+      showSaveSuccess.value = true;
+      setTimeout(() => { showSaveSuccess.value = false; }, 3000);
     } else {
-      showToast(data.message || '保存失败', 'error');
+      alert(data.message || '保存失败');
     }
   } catch (error) {
-    showToast('网络连接失败 (8080)', 'error');
+    alert('网络连接失败');
   } finally {
     loading.value = false;
   }
 };
 
-// 4. 删除日记 (DELETE)
-const deleteDiary = async (id) => {
+// 3. 升级版删除逻辑 (触发 Modal)
+const openDeleteModal = (id) => {
+  targetDeleteId.value = id;
+  showDeleteModal.value = true;
+};
+
+const executeDelete = async () => {
+  if (!targetDeleteId.value) return;
+  isDeleting.value = true;
+  
   try {
-    // ✨✨✨ 使用 8080 端口 ✨✨✨
-    const res = await fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE'
-    });
+    const res = await fetch(`${API_BASE_URL}/${targetDeleteId.value}`, { method: 'DELETE' });
     const data = await res.json();
     
     if (data.success) {
-      diaries.value = diaries.value.filter(d => d.id !== id);
-      deletingId.value = null;
-      showToast('记录已删除 🗑️', 'success');
+      diaries.value = diaries.value.filter(d => d.id !== targetDeleteId.value);
+      showDeleteModal.value = false;
+      targetDeleteId.value = null;
     } else {
-      showToast('删除失败', 'error');
+      alert('删除失败');
     }
   } catch (error) {
-    showToast('网络错误', 'error');
+    alert('网络错误');
+  } finally {
+    isDeleting.value = false;
   }
 };
 
@@ -196,98 +221,127 @@ const formatDate = (iso) => {
 </script>
 
 <style scoped>
-.page-container {
-  min-height: 100%; position: relative; overflow-y: auto; padding: 40px 20px;
-}
+/* 原有基础样式保持不变 */
+
 .content-wrapper { max-width: 800px; margin: 0 auto; }
 
-.header { 
-  display: flex; justify-content: space-between; align-items: center; 
-  margin-bottom: 30px; position: relative;
-}
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; position: relative; }
 .title-area { text-align: center; }
-.header h2 { margin: 0; color: var(--text-main); font-size: 24px; letter-spacing: 1px; }
-.sub-text { font-size: 13px; color: #888; margin-top: 4px; display: block; }
+.header h2 { margin: 0; color: #1d1d1f; font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
+.sub-text { font-size: 13px; color: #86868b; margin-top: 4px; display: block; }
 
 .glass-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
-  border-radius: 30px;
-  color: #555; font-size: 14px; font-weight: 500;
-  cursor: pointer; transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  display: flex; align-items: center; gap: 6px; padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px); border-radius: 30px; color: #1d1d1f; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
-.glass-btn:hover {
-  background: rgba(255, 255, 255, 0.8);
-  transform: translateX(-3px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-  color: var(--primary-color);
-}
-.glass-btn .icon { font-size: 16px; line-height: 1; }
+.glass-btn:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); color: #0071e3; }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 20px; padding: 24px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+  background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 24px; padding: 30px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.04); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.editor-card { margin-bottom: 40px; }
-.editor-card h3 { margin: 0 0 20px 0; color: #444; font-size: 18px; }
 
-.mood-selector { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+.editor-card { margin-bottom: 40px; }
+.editor-card h3 { margin: 0 0 24px 0; color: #1d1d1f; font-size: 18px; font-weight: 600; }
+
+.mood-selector { display: flex; gap: 15px; margin-bottom: 24px; flex-wrap: wrap; }
 .mood-item {
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  padding: 10px 15px; border-radius: 12px; cursor: pointer;
-  background: rgba(255,255,255,0.5); transition: 0.2s; border: 2px solid transparent;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 20px; border-radius: 16px; cursor: pointer;
+  background: #f5f5f7; transition: all 0.2s; border: 2px solid transparent;
 }
-.mood-item:hover { transform: translateY(-3px); background: #fff; }
-.mood-item.active { border-color: var(--primary-color); background: rgba(var(--primary-rgb), 0.1); }
-.mood-item .emoji { font-size: 24px; }
-.mood-item .label { font-size: 12px; color: #666; }
+.mood-item:hover { transform: translateY(-3px); background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.mood-item.active { border-color: #0071e3; background: rgba(0, 113, 227, 0.08); }
+.mood-item .emoji { font-size: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+.mood-item .label { font-size: 13px; color: #1d1d1f; font-weight: 500; }
 
 .diary-input {
-  width: 100%; height: 120px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);
-  background: rgba(255,255,255,0.5); padding: 15px; font-size: 15px;
-  resize: vertical; outline: none; transition: 0.3s;
-  font-family: inherit; margin-bottom: 15px;
+  width: 100%; height: 140px; border-radius: 16px; border: 1px solid #e5e5ea;
+  background: #fff; padding: 20px; font-size: 16px; color: #1d1d1f;
+  resize: vertical; outline: none; transition: all 0.3s; box-sizing: border-box;
 }
-.diary-input:focus { background: #fff; border-color: var(--primary-color); }
+.diary-input:focus { border-color: #0071e3; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15); }
 
 .save-btn {
-  width: 100%; padding: 12px; background: var(--primary-gradient);
-  color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;
-  transition: 0.2s;
+  width: 100%; padding: 16px; background: linear-gradient(135deg, #0071e3 0%, #4facfe 100%);
+  color: white; border: none; border-radius: 16px; font-weight: 600; font-size: 16px; cursor: pointer;
+  transition: all 0.3s; margin-top: 20px; box-shadow: 0 8px 20px rgba(0, 113, 227, 0.25);
 }
-.save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.save-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(var(--primary-rgb), 0.3); }
+.save-btn:disabled { background: #a1cffd; box-shadow: none; cursor: not-allowed; }
+.save-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(0, 113, 227, 0.35); }
 
-.section-title { margin-bottom: 20px; color: #666; font-size: 16px; border-left: 4px solid var(--primary-color); padding-left: 10px; }
-.diary-grid { display: grid; gap: 20px; }
-.diary-item { position: relative; transition: 0.3s; }
-.diary-item:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+.section-title { margin-bottom: 24px; color: #86868b; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.diary-grid { display: grid; gap: 24px; }
+.diary-item:hover { transform: translateY(-4px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
 
-.diary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed rgba(0,0,0,0.1); }
-.meta-info { display: flex; align-items: center; gap: 8px; }
-.diary-mood { font-size: 24px; }
-.diary-date { font-size: 13px; color: #999; }
-.diary-content { font-size: 15px; color: #444; line-height: 1.6; white-space: pre-wrap; margin: 0; }
+.diary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
+.meta-info { display: flex; align-items: center; gap: 12px; }
+.diary-mood { font-size: 28px; }
+.diary-date { font-size: 14px; color: #86868b; font-weight: 500; }
+.diary-content { font-size: 16px; color: #333; line-height: 1.7; white-space: pre-wrap; margin: 0; }
 
-.del-btn { background: none; border: none; color: #ff4d4f; font-size: 12px; cursor: pointer; opacity: 0.6; transition: 0.2s; }
-.del-btn:hover { opacity: 1; text-decoration: underline; }
+/* 升级版：删除按钮样式 */
+.del-btn { 
+  display: flex; align-items: center; gap: 4px; background: rgba(255, 59, 48, 0.1); 
+  border: none; color: #ff3b30; font-size: 13px; font-weight: 600; padding: 6px 12px; 
+  border-radius: 12px; cursor: pointer; transition: all 0.2s; 
+}
+.del-btn:hover { background: #ff3b30; color: #fff; }
+.del-icon { font-size: 14px; }
 
-.confirm-box { display: flex; gap: 8px; }
-.confirm-btn { background: #ff4d4f; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-.cancel-btn { background: #ddd; color: #666; border: none; padding: 2px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+/* ==================== ✨ 新增：全局弹窗与交互 ==================== */
 
-.empty-state { text-align: center; color: #999; padding: 40px; display: flex; flex-direction: column; align-items: center; }
-.empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.5; }
+/* 保存成功 Toast */
+.custom-success-toast {
+  position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 20px;
+  padding: 16px 24px; display: flex; align-items: center; gap: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1); z-index: 9999;
+}
+.toast-icon-box { background: #34c759; color: white; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 20px; }
+.toast-text h4 { margin: 0 0 4px 0; color: #1d1d1f; font-size: 15px; font-weight: 700; }
+.toast-text p { margin: 0; color: #86868b; font-size: 13px; }
 
-.slide-in-down { animation: slideDown 0.6s ease; }
-.slide-in-up { animation: slideUp 0.6s ease; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+/* 删除确认 Modal */
+.custom-modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px);
+  z-index: 9999; display: flex; align-items: center; justify-content: center;
+}
+.custom-modal {
+  background: #fff; width: 90%; max-width: 360px; border-radius: 24px;
+  padding: 32px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+  animation: modal-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-alert-icon { font-size: 48px; margin-bottom: 16px; filter: drop-shadow(0 4px 8px rgba(255, 59, 48, 0.2)); }
+.custom-modal h3 { margin: 0 0 12px 0; color: #1d1d1f; font-size: 20px; font-weight: 700; }
+.custom-modal p { color: #86868b; font-size: 14px; line-height: 1.6; margin-bottom: 32px; }
+
+.modal-actions { display: flex; gap: 12px; }
+.modal-btn { flex: 1; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; }
+.modal-btn.cancel { background: #f5f5f7; color: #1d1d1f; }
+.modal-btn.cancel:hover { background: #e5e5ea; }
+.modal-btn.confirm { background: #ff3b30; color: white; box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3); }
+.modal-btn.confirm:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255, 59, 48, 0.4); }
+.modal-btn.confirm:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* 动画过渡 */
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translate(-50%, -20px); }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+
+@keyframes modal-pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.slide-in-down { animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.slide-in-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 </style>

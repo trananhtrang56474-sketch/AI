@@ -15,9 +15,9 @@ const state = toastState;
 
 const icon = computed(() => {
   switch (state.type) {
-    case 'success': return '🎉';
-    case 'error': return '❌';
-    case 'warning': return '⚠️';
+    case 'success': return '';
+    case 'error': return '';
+    case 'warning': return '';
     default: return '💡';
   }
 });

@@ -75,34 +75,44 @@
 
       <div class="main-grid">
         
-        <div class="glass-card daily-quote slide-in-up" @click="changeQuote" title="点击切换金句">
-          <div class="quote-bg-icon">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,22C12,22 4,16 4,10C4,6 7.5,3 12,5C16.5,3 20,6 20,10C20,16 12,22 12,22Z" opacity="0.05"/></svg>
-          </div>
-          
-          <div class="quote-header">
-            <span class="quote-icon">❝</span>
-            <span class="refresh-hint">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-              换一句
-            </span>
-          </div>
-
-          <div class="quote-content-wrapper">
-            <transition name="fade" mode="out-in">
-              <div :key="currentQuote.text" class="quote-inner">
-                <p class="quote-text">{{ currentQuote.text }}</p>
-                <span class="quote-author">—— {{ currentQuote.author }}</span>
-              </div>
-            </transition>
-          </div>
-
-          <div class="quote-footer">
-            <div class="date-box">
-              <span class="day">{{ currentDay }}</span>
-              <span class="date">{{ currentDate }}</span>
+        <div class="glass-card assessment-panel slide-in-up">
+          <div class="assessment-section">
+            <div class="section-header">
+              <span class="label">当前心境评估 (V-A)</span>
+              <div class="mini-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="11" r="3"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
             </div>
-            <div class="footer-tag">每日寄语</div>
+            <div class="section-body">
+              <div class="score-row">
+                <span class="score-num">{{ analytics.avg_v || '5.0' }}</span>
+                <span class="score-divider">/</span>
+                <span class="score-num">{{ analytics.avg_a || '3.0' }}</span>
+              </div>
+              <div class="status-tag" :class="statusClass">{{ statusLabel }}</div>
+              <p class="desc">愉悦度 (V) / 激活度 (A)</p>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="assessment-section">
+            <div class="section-header">
+              <span class="label">PHQ-9 风险评估</span>
+              <div class="mini-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div>
+            </div>
+            <div class="section-body">
+              <div class="risk-row">
+                <span class="score-num">{{ phq9Score }}</span>
+                <span class="risk-text">{{ riskLevelText }}</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" :style="{ width: (phq9Score / 27 * 100) + '%' }"></div>
+              </div>
+              <div class="progress-labels"><span>0</span><span>27</span></div>
+            </div>
+          </div>
+
+          <div class="panel-footer">
+             <button class="footer-btn" @click="$router.push('/report')">查看详细心理档案</button>
           </div>
         </div>
 
@@ -147,15 +157,6 @@ const greeting = computed(() => {
   return '晚上好';
 });
 const timeIcon = computed(() => hour < 6 ? '🌙' : hour < 18 ? '☀️' : '✨');
-
-const currentDate = computed(() => {
-  const d = new Date();
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-});
-const currentDay = computed(() => {
-  const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return days[new Date().getDay()];
-});
 
 const currentStatus = ref("平稳放松"); 
 
@@ -232,50 +233,78 @@ const fetchAiCareMessage = async () => {
   }
 };
 
-// ================= 4. 每日金句库 =================
-const quotesList = [
-  { text: "接纳自己的不完美，是爱自己的开始。", author: "每日治愈" },
-  { text: "万物皆有裂痕，那是光照进来的地方。", author: "莱昂纳德·科恩" },
-  { text: "允许一切发生，你就是那个强大的观察者。", author: "海灵格" },
-  { text: "慢慢来，谁还没有一个努力的过程。", author: "治愈君" },
-  { text: "你必须要精力充沛，才能抵挡世俗的万千琐事。", author: "查理·芒格" },
-  { text: "生活不可能像你想象得那么好，但也不会像你想象得那么糟。", author: "莫泊桑" },
-  { text: "当你的心定下来，外界的喧嚣就成了背景音。", author: "林清玄" },
-  { text: "别总是回头看，前面的风景更值得期待。", author: "匿名" },
-  { text: "疲惫的时候就停下来休息，这不是放弃，是蓄力。", author: "心理关怀" },
-  { text: "即使是很小的进步，也是在向着光亮的地方走去。", author: "治愈君" },
-  { text: "去爱那些对你温柔的事物，包括你自己。", author: "匿名" },
-  { text: "没有跨不过去的黑夜，只有未曾迎来的黎明。", author: "每日治愈" }
-];
-const currentQuote = ref(quotesList[0]);
+// ================= 4. 新增的评估面板计算逻辑 =================
+const analytics = ref({});
 
-const changeQuote = () => {
-  let newIndex;
-  do {
-    newIndex = Math.floor(Math.random() * quotesList.length);
-  } while (quotesList[newIndex].text === currentQuote.value.text); 
-  currentQuote.value = quotesList[newIndex];
-};
+const phq9Score = computed(() => {
+  if (!analytics.value.health_index) return 0;
+  // 简单模拟 PHQ-9 得分 (0-27)
+  return Math.round((100 - analytics.value.health_index) / 100 * 27);
+});
 
-// ================= 5. 图表数据加载 =================
-const homeChartData = ref({ dates: [], scores: [] });
+const riskLevelText = computed(() => {
+  const s = phq9Score.value;
+  if (s <= 4) return '极低风险';
+  if (s <= 9) return '轻度风险';
+  if (s <= 14) return '中度风险';
+  return '重度风险';
+});
+
+const statusLabel = computed(() => {
+  const v = analytics.value.avg_v || 5;
+  if (v >= 6.5) return '心态积极';
+  if (v <= 4.5) return '内耗严重';
+  return '状态平稳';
+});
+
+const statusClass = computed(() => {
+  const v = analytics.value.avg_v || 5;
+  if (v >= 6.5) return 'status-good';
+  if (v <= 4.5) return 'status-bad';
+  return 'status-neutral';
+});
+
+// ================= 5. 图表与数据加载 =================
+// ✨ 1. 把所有需要的数组都初始化好，防止子组件报错
+// ================= 5. 图表与数据加载 =================
+const homeChartData = ref({ dates: [], scores: [], valences: [], arousals: [], tags: [], contents: [] });
 
 const fetchHomeChartData = async () => {
   try {
     const userId = localStorage.getItem('user_id');
     if (!userId) return;
+    
     const res = await axios.get(`${API_BASE}/api/chart-data?user_id=${userId}`);
+    
     if (res.data && res.data.dates) {
-      homeChartData.value = res.data;
-      // ✨ 去掉了原先用于头部统计的分数计算代码，保持纯净
+      // ✨✨✨ 修复1：使用 Object.assign 而不是重新赋值 `{}`
+      // 这样能保留 Vue 的响应式追踪，ECharts 就不会从空白重绘，而是平滑延伸！
+      Object.assign(homeChartData.value, {
+        dates: res.data.dates || [],
+        scores: res.data.scores || [],
+        valences: res.data.valences || [],
+        arousals: res.data.arousals || [],
+        tags: res.data.tags || [],
+        contents: res.data.contents || []
+      });
+      
+      // 赋值左侧的评估面板数据
+      if (res.data.analytics) {
+        analytics.value = res.data.analytics;
+      }
     }
-  } catch (error) { console.error("图表加载失败", error); }
+  } catch (error) { 
+    console.error("图表数据加载失败", error); 
+  }
 };
 
 onMounted(() => {
-  currentQuote.value = quotesList[Math.floor(Math.random() * quotesList.length)];
-  fetchHomeChartData();
-  fetchAiCareMessage(); 
+  // ✨✨✨ 修复2：排队机制！
+  // 先拉取超快的图表数据（0.1秒），确保画面瞬间出现。
+  // 然后再去请求缓慢的 AI 寄语接口，彻底解决“变空白转圈”的交通阻塞！
+  fetchHomeChartData().then(() => {
+    fetchAiCareMessage(); 
+  });
 });
 </script>
 
@@ -369,44 +398,41 @@ onMounted(() => {
 .continue-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 .btn-icon { width: 16px; height: 16px; }
 
-/* --- 2. 中间网格区 (左窄右宽) --- */
+/* --- 2. 中间网格区 (完全保持原来的布局结构) --- */
 .main-grid { display: grid; grid-template-columns: minmax(280px, 1fr) 2.5fr; gap: 24px; align-items: stretch; margin-top: 10px; }
 
-.daily-quote {
-  background: linear-gradient(135deg, rgba(234, 240, 255, 0.95) 0%, rgba(255,255,255,0.7) 100%);
-  border-left: 4px solid var(--primary-color); padding: 24px;
-  position: relative; overflow: hidden;
-  cursor: pointer; 
-  transition: transform 0.3s, box-shadow 0.3s;
+/* ✨ 新增的评估面板样式 (替换原来的 daily-quote) */
+.assessment-panel {
   display: flex; flex-direction: column; justify-content: space-between;
+  position: relative; overflow: hidden;
 }
-.daily-quote:hover { transform: translateY(-3px); }
 
-.quote-bg-icon { position: absolute; right: -20px; bottom: -20px; width: 150px; height: 150px; color: var(--primary-color); pointer-events: none; }
-.quote-bg-icon svg { width: 100%; height: 100%; }
+.assessment-section { display: flex; flex-direction: column; }
+.section-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-sub); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.mini-icon { width: 28px; height: 28px; background: rgba(123, 97, 255, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary-color); }
+.mini-icon svg { width: 16px; height: 16px; }
 
-.quote-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; position: relative; z-index: 2; }
-.quote-icon { font-size: 32px; color: var(--primary-color); opacity: 0.4; line-height: 1; }
-.refresh-hint { 
-  font-size: 13px; color: var(--primary-color); opacity: 0; 
-  transition: opacity 0.3s; display: flex; align-items: center; gap: 4px; font-weight: 500;
-}
-.daily-quote:hover .refresh-hint { opacity: 0.8; } 
+.score-row { margin-bottom: 4px; display: flex; align-items: baseline; }
+.score-num { font-size: 30px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; line-height: 1.2; }
+.score-divider { color: #cbd5e1; font-weight: 300; margin: 0 6px; font-size: 20px; }
 
-.quote-content-wrapper { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 2; }
-.quote-text { font-style: italic; color: #475569; margin: 0 0 16px 0; font-size: 15px; line-height: 1.8; }
-.quote-author { font-size: 13px; color: var(--primary-color); display: block; text-align: right; font-weight: 600; }
+.status-tag { display: inline-block; padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 700; margin: 8px 0; width: max-content; }
+.status-good { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+.status-bad { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+.status-neutral { background: rgba(123, 97, 255, 0.1); color: var(--primary-color); border: 1px solid rgba(123, 97, 255, 0.2); }
+.desc { font-size: 12px; color: var(--text-sub); margin: 0; }
 
-.quote-footer {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  margin-top: 20px; padding-top: 16px;
-  border-top: 1px dashed rgba(123, 97, 255, 0.2);
-  position: relative; z-index: 2;
-}
-.date-box { display: flex; flex-direction: column; gap: 2px; }
-.date-box .day { font-size: 16px; font-weight: 700; color: var(--text-main); }
-.date-box .date { font-size: 12px; color: var(--text-sub); }
-.footer-tag { font-size: 12px; background: var(--primary-gradient); color: white; padding: 2px 10px; border-radius: 12px; font-weight: 500; opacity: 0.9; }
+.divider { height: 1px; background: rgba(0,0,0,0.06); margin: 16px 0; }
+
+.risk-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.risk-text { font-size: 14px; color: var(--text-sub); font-weight: 600; }
+.progress-bar { height: 6px; background: rgba(0,0,0,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: var(--primary-gradient); transition: width 0.5s ease; border-radius: 10px;}
+.progress-labels { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 600; }
+
+.panel-footer { margin-top: 16px; }
+.footer-btn { width: 100%; padding: 10px; border-radius: 10px; border: 1px dashed rgba(123, 97, 255, 0.4); background: rgba(123, 97, 255, 0.02); color: var(--primary-color); font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+.footer-btn:hover { background: var(--primary-color); color: white; border-style: solid; }
 
 /* 右侧图表区域 */
 .trend-card { display: flex; flex-direction: column; }
@@ -414,7 +440,6 @@ onMounted(() => {
 .header-title .icon { width: 20px; height: 20px; color: var(--primary-color); }
 .header-title h4 { margin: 0; font-size: 17px; color: var(--text-main); font-weight: 600; }
 
-/* ✨ 大幅增加了这里的高度，并使用了 flex 填充 */
 .chart-wrapper { 
   flex: 1; 
   min-height: 340px; 

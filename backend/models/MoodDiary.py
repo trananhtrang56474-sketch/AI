@@ -1,20 +1,24 @@
+
 # backend/models/MoodDiary.py
-from extensions import db
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from datetime import datetime
+from database import Base
 
-class MoodDiary(db.Model):
-    __tablename__ = 'mood_diary' # 👈 指定表名
+class MoodDiary(Base):
+    __tablename__ = 'mood_diary' 
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    mood = db.Column(db.String(20), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+   
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    mood = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
 
     def to_dict(self):
         return {
             'id': self.id,
             'mood': self.mood,
             'content': self.content,
-            'created_at': self.created_at.isoformat()
+            # 做个安全保护，防止 created_at 为空时报错
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }

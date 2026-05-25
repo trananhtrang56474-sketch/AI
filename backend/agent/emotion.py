@@ -1,16 +1,29 @@
 # backend/agent/emotion.py
 import json
 import re
+import os      # ✨ 新增：必须引入 os 模块来处理文件路径
+import base64  # ✨ 确保顶部引入 base64
 from llm.qwen_client import QwenClient
-from models import ChatLog
+from models.chat import ChatLog
+from database import SessionLocal  # ✨ 新增：引入 FastAPI 的数据库会话工厂
+
+# 👇========= 新增：LangChain 多模态依赖 =========👇
+from config import Config
+from langchain_community.chat_models.tongyi import ChatTongyi
+from langchain_core.messages import HumanMessage
+
+# ✨ 初始化专门处理图片的视觉大模型 (Vision-Language Model)
+vision_llm = ChatTongyi(
+    model_name="qwen-vl-max", 
+    dashscope_api_key=Config.DASHSCOPE_API_KEY
+)
+# 👆========= 新增完毕 =========👆
 
 llm_client = QwenClient()
 
 # ==========================================
 # 🔥 核心：心理学维度映射 (仅用于风控拦截)
 # ==========================================
-# 唤醒度 (Arousal) 和 效价 (Valence) 现在由大模型基于 Russell 环形模型直接输出 1-10 的精确打分。
-# 这个字典仅保留基础的情绪标签以及对应的极度风险值(Risk)，用于物理兜底拦截。
 EMOTION_MAP = {
     "危机":   {"risk": 2},
     "愤怒":   {"risk": 1},
@@ -39,16 +52,13 @@ def get_risk(tag):
 
 def analyze_emotion(text):
     """
-    Step 1: 瞬时情绪(Emotion)深度提取 (基于 Russell 的 Circumplex Model of Affect)
-    让 LLM 联合评估效价(Valence)和唤醒度(Arousal)并给出 1-10 精准打分。
-    该结果代表瞬时状态，随后将由后端的 ALMA 平滑算法转化为长期的心境(Mood)。
+    Step 1: 瞬时情绪(Emotion)深度提取
     """
     default_result = {"tag": "平静", "valence": 5, "arousal": 3, "score": 50} 
 
     if not text or len(text) < 2: 
         return default_result
     
-    # ✨ 优化：融入临床 CBT 与 Russell 环形模型的专业 Prompt 框架
     prompt = [
         {"role": "system", "content": """你是一个集成认知行为疗法(CBT)原理与 Russell 情感环形模型(Circumplex Model of Affect)的专业心理评估引擎。
 请分析用户当前的文本，并在 1 到 10 的量表上独立评估其瞬时状态的 Valence（心理效价）和 Arousal（躯体唤醒度）。
@@ -88,15 +98,11 @@ def analyze_emotion(text):
             result = json.loads(match.group())
             tag = result.get("tag", "平静")
             
-            # 提取双维度得分并限制在 1-10 之间
             v = max(1, min(10, int(result.get("valence", 5))))
             a = max(1, min(10, int(result.get("arousal", 3))))
             
-            # ✨ 核心修复：将 Valence(1-10) 严谨映射为原始分数(0-100)
-            # 公式: (V - 1) / 9 * 100
             score = int((v - 1) / 9.0 * 100)
             
-            # 返回瞬时 Emotion 坐标与原始分数，供 routes.py 进行长期 Mood 平滑计算
             return {"tag": tag, "score": score, "valence": v, "arousal": a}
         
         return default_result
@@ -110,13 +116,20 @@ def analyze_trend(session_id):
     """
     if not session_id: return "FIRST_CONTACT"
 
-    # 获取最近 5 条记录
-    recent_logs = ChatLog.query.filter_by(session_id=session_id, role="user")\
-        .order_by(ChatLog.created_at.desc()).limit(5).all()
+    # ✨ 核心修复：使用 FastAPI 的局部 Session 来执行查询
+    db = SessionLocal()
+    try:
+        recent_logs = db.query(ChatLog).filter_by(session_id=session_id, role="user")\
+            .order_by(ChatLog.created_at.desc()).limit(5).all()
+    except Exception as e:
+        print(f"⚠️ 数据库查询失败: {e}")
+        return "STABLE"
+    finally:
+        # 确保查询完毕后释放连接
+        db.close()
     
     if len(recent_logs) < 2: return "FIRST_CONTACT"
 
-    # 1. 数据按时间正序排列: [最旧, ..., 最新]
     logs_ordered = recent_logs[::-1] 
     tags = [log.emotion_tag or "平静" for log in logs_ordered]
     scores = [log.emotion_score if log.emotion_score is not None else 60 for log in logs_ordered]
@@ -125,41 +138,92 @@ def analyze_trend(session_id):
     current_score = scores[-1]
     prev_score = scores[-2]
 
-    # 获取风险值
     risks = [get_risk(t) for t in tags]
 
-    # ==========================
-    # 🕵️‍♀️ 核心算法：数学特征与心理学模式检测
-    # ==========================
-
-    # A. 🚨 风险上升 (只要最近有高风险标签 或者 效价分数极低)
     if max(risks[-2:]) >= 2 or current_score <= 20:
         return "CRISIS_RISING"
 
-    # B. 🎭 假性平静 (Emotional Suppression)
-    # 心理学逻辑：前一刻处于极度痛苦（<35分），下一刻突然表示“平静”（分数瞬间回到60左右）
     if current_tag == "平静" and prev_score < 35 and current_score >= 55:
         return "EMOTIONAL_SUPPRESSION"
 
-    # 准备移动平均数计算
     if len(scores) >= 3:
         recent_avg = sum(scores[-2:]) / 2.0
         past_avg = sum(scores[:-2]) / len(scores[:-2])
         
-        # C. 📉 恶化 (均值显著下降超 15 分)
         if recent_avg < past_avg - 15:
             return "DETERIORATING"
             
-        # D. 📈 改善 (均值显著上升超 15 分)
         if recent_avg > past_avg + 15:
             return "IMPROVING"
 
-    # E. ⚖️ 持续负面 (连续 3 次分数低于 45，陷入低谷)
     if len(scores) >= 3 and all(s < 45 for s in scores[-3:]):
         return "PERSISTENT_NEGATIVE"
 
-    # F. 🌟 积极向上 (连续 2 次分数高于 75)
     if len(scores) >= 2 and all(s > 75 for s in scores[-2:]):
         return "HIGHLY_POSITIVE"
 
     return "STABLE"
+
+# 👇========= 新增：图像处理函数 =========👇
+def analyze_image(image_url):
+    """
+    Step 3: 使用 LangChain 多模态模型分析图片 (修复 DashScope 协议格式版)
+    """
+    try:
+        # 1. 解析物理路径并转为 Base64 
+        filename = image_url.split('/')[-1]
+        # 修正路径：如果 emotion.py 在 agent 文件夹，上跳一级是 backend
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        local_path = os.path.join(os.path.dirname(current_dir), 'uploads', filename)
+        
+        print(f" 正在解析本地图片文件: {local_path}")
+
+        with open(local_path, "rb") as f:
+            base64_image = base64.b64encode(f.read()).decode('utf-8')
+
+        # 2. 构造符合 DashScope VL 模型预期的消息体 ✨
+        message = HumanMessage(
+            content=[
+                {
+                    "type": "text", 
+                    "text": "请描述这张图片，并判断从中传递出的情绪氛围。请严格返回JSON格式：{\"caption\": \"图片描述\", \"valence\": 1到10的整数, \"arousal\": 1到10的整数}"
+                },
+                {
+                    "type": "image",  # ✨ 注意：DashScope VL 协议中这里必须是 "image" 而非 "image_url"
+                    "image": f"data:image/png;base64,{base64_image}" # ✨ 键名也必须是 "image"
+                }
+            ]
+        )
+
+       # 3. 发起请求
+        response = vision_llm.invoke([message])
+        
+        # ✨ 核心修复：处理 DashScope 多模态特有的返回格式
+        # 有时返回的是字符串，有时是 [{'text': '...'}]
+        if isinstance(response.content, list):
+            response_text = response.content[0].get('text', '')
+        else:
+            response_text = response.content
+
+        print(f" AI 视觉原始文本: {response_text}")
+
+        # 解析 JSON (增加对 Markdown 代码块的兼容)
+        # 清洗掉可能存在的 ```json 和 ``` 标记
+        clean_text = re.sub(r'```json\s*|```', '', response_text).strip()
+        
+        match = re.search(r'\{.*\}', clean_text, re.DOTALL)
+        if match:
+            result = json.loads(match.group())
+            return {
+                "caption": result.get("caption", "图片内容"),
+                "valence": max(1, min(10, int(result.get("valence", 5)))),
+                "arousal": max(1, min(10, int(result.get("arousal", 5))))
+            }
+        
+        # 兜底：如果 JSON 解析还是失败，尝试直接提取文字
+        return {"caption": response_text[:50], "valence": 5, "arousal": 5}
+
+    except Exception as e:
+        print("❌ 图像分析失败:", e)
+        return {"caption": "图片解析失败", "valence": 5, "arousal": 3}
+# 👆========= 新增完毕 =========👆

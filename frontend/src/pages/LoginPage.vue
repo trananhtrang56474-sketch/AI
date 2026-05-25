@@ -122,7 +122,7 @@ const clearError = () => {
   hasError.value = false;
 };
 
-// ✨ 升级版错误处理
+// 错误处理
 const triggerError = (msg, field = '') => {
   errorMsg.value = msg;
   errorField.value = field;
